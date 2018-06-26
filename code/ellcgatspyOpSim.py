@@ -561,6 +561,27 @@ def ellc_gatspy_sim(j, t_zero, period, a, q, f_c, f_s, ld_1, ld_2, Teff1, Teff2,
 					#raise Exception('stopping')
 
 
+		if (len(totalmag) > 0): 
+			t = np.array(totalt)
+			mag = np.array(totalmag)
+			dmag = np.array(totaldmag)
+			filts = np.array(totalfilts)
+			drng = max(t) - min(t)
+			print("drng",drng)
+
+			model = LombScargleMultiband(Nterms_band=n_band, Nterms_base=n_base, fit_period = True)
+			#model = LombScargleMultibandFast(Nterms=2, fit_period = True) #this is not working in parallel for some reason
+			model.optimizer.period_range = (0.2, drng)
+			model.fit(t, mag, dmag, filts)
+			LSM = model.best_period
+			print ('LSM running')
+			return_dict[j] = return_dict[j] + [LSM]
+			#n_totalrun += 1
+			print ('LSM in return_dict')
+			return_dict[j] = return_dict[j] + [delta_mag]
+		else:
+			return_dict[j] = return_dict[j] + [-999.]
+			return_dict[j] = return_dict[j] + [-999.]
 
 
 def afromP(m1, m2, P):
