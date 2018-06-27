@@ -1,3 +1,6 @@
+### I need to pull out gatspy into it's own function for easier plug-and-play
+### WE NEED TO DOUBLE CHECK getsig2rand
+
 #python libraries
 import numpy as np
 import argparse
@@ -40,14 +43,21 @@ class LSST-EBclass(object):
 		#self.filters = ['u_', 'g_', 'r_', 'i_', 'z_']
 		self.filters = ['u_', 'g_', 'r_', 'i_', 'z_', 'y_']
 
-		self.Ncores = 1
-		self.Nbin = 1000
+		self.n_bin = 100000
+		self.n_band = 2
+		self.n_base = 2  
+		self.n_cores = 0
 
 		self.ofile = 'output_file.csv' #output file name
 		self.GalaxyFile ='../input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
 
 
+		self.plot_dict = None
+		self.return_dict = None
+
 		self db = sqlite3.connect('../db/minion_1016_sqlite.db')
+
+		self.parser = argparse.ArgumentParser()
 
 
 	#Some approximate function for deriving stellar parameters
@@ -84,6 +94,15 @@ class LSST-EBclass(object):
 			coeff = 1
 		return cons*(m**coeff) 
 
+	def afromP(self, m1, m2, P):
+		#returns the semimajor axis from the period and stellar masses
+		return (((P**2.) * constants.G * (m1 + m2) / (4*np.pi**2.))**(1./3.)).decompose().to(units.AU)
+
+	def Eggleton_RL(self, q,a):
+	#Eggleton (1983) Roche Lobe
+	#assuming synchronous rotation
+	#but taking the separation at pericenter
+		return a*0.49*q**(2./3.)/(0.6*q**(2./3.) + np.log(1. + q**(1./3.)))
 
 	#This is copied from Katie's GxRealizationThinDisk.py, but here we've created a method
 	#This will draw the binaries from the Galaxy realization
@@ -241,26 +260,22 @@ class LSST-EBclass(object):
 			datList = np.array((m1Trans, m2Trans, porbTrans, rad1Trans, rad2Trans, Lum1Trans, Lum2Trans))
 						
 		# GENERATE THE KDE FOR THE DATA LIST
-		##############################################################################\
-		print(popBw)
-		print(datList)
-		for i,x in enumerate(datList):
-			print(len(x))
-			f = plt.figure()
-			plt.plot(x)
-			f.savefig(str(i)+".png")
+		##############################################################################
+		if (self.verbose):
+			print(popBw)
+			print(datList)
 
 		sampleKernel = scipy.stats.gaussian_kde(datList)#, bw_method=popBw)
 					
 				
 		# CALL THE MONTE CARLO GALAXY SAMPLE CODE
 		##############################################################################
-		print('nSample: '+str(self.Nbin))
+		print('nSample: '+str(self.n_bin))
 		output = multiprocessing.Queue()
 		processes = [multiprocessing.Process(target = GxSample.GxSample, \
-						args   = (x, self.Ncores, FixedPop, sampleKernel,\
-						binID, self.Nbin, popBw, len(eIndex), Tobs, output)) \
-						for x in range(self.Ncores)]
+						args = (x, self.n_cores, FixedPop, sampleKernel,\
+						binID, self.n_bin, popBw, len(eIndex), Tobs, output)) \
+						for x in range(self.n_cores)]
 		for p in processes:
 			p.start()
 
@@ -272,7 +287,7 @@ class LSST-EBclass(object):
 		print('The number of sources in pop '+binID+' is ', nSRC)
 
 		gxDatTot = []
-		for kk in range(self.Ncores):
+		for kk in range(self.n_cores):
 			print(kk)
 			if os.path.getsize('gxRealization_'+str(kk)+'_'+str(binID)+'.dat') > 0:
 				gxReal = np.loadtxt('gxRealization_'+str(kk)+'_'+str(binID)+'.dat', delimiter = ',')
@@ -341,10 +356,171 @@ class LSST-EBclass(object):
 			dates = np.array([float(d) for d in date[OpSimdates] ])/86400. #converting seconds to days
 			return dates
 
+	def getSig2Rand(self, filt, magnitude):
+		#returns 2 sigma random error based on the pass band (y-values may be wonky - need to check for seeing and 
+		# against others)
+		X = 1. #function of distance??
+		t_vis = 30. #seconds
+		if filt == 'u_':  
+			gamma = 0.037
+			seeing = 0.77
+			m_sky = 22.9
+			C_m = 22.92
+			k_m = 0.451
+			#m_5 = 23.68
+		if filt == 'g_':
+			gamma = 0.038
+			seeing = 0.73
+			m_sky = 22.3
+			C_m = 24.29
+			k_m = 0.163
+			#m_5 = 24.89
+		if filt == 'r_':
+			gamma = 0.039
+			seeing = 0.70
+			m_sky = 21.2
+			C_m = 24.33
+			k_m = 0.087
+			#m_5 = 24.43
+		if filt == 'i_':
+			gamma = 0.039
+			seeing = 0.67
+			m_sky = 20.5
+			C_m = 24.20
+			k_m = 0.065
+			#m_5 = 24.00
+		if filt == 'z_':
+			gamma = 0.040
+			seeing = 0.65
+			m_sky = 19.6
+			C_m = 24.07
+			k_m = 0.043
+			#m_5 = 24.45
+		if filt == 'y_':
+			gamma = 0.0039
+			seeing = 0.65 #not sure where this is from - not in Ivezic; still the z value
+			m_sky = 18.61
+			C_m = 23.73
+			k_m = 0.170
+			#m_5 = 24.45 #not sure where this is from - not in Ivezic; still the z value
+			#from Ivezic et al 2008 - https://arxiv.org/pdf/0805.2366.pdf - Table 2 (p26)
+
+		m_5 = C_m + (0.50*(m_sky - 21.)) + (2.50*np.log10(0.7/seeing)) + (1.25*np.log10(t_vis/30.)) - (k_m*(X-1.))
+		return (0.04 - gamma)*(10**(0.4*(magnitude - m_5))) + gamma*((10**(0.4*(magnitude - m_5)))**2)*(magnitude**2)
 
 
+	def make_plots(self):
+		#colors = ['C0', 'C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9']
+		#print([ matplotlib.colors.to_hex(c) for c in colors])
+		colors = [u'#1f77b4', u'#ff7f0e', u'#2ca02c', u'#d62728', u'#9467bd', u'#8c564b', u'#e377c2', u'#7f7f7f', u'#bcbd22', u'#17becf']
+
+		f, ax = plt.subplots(len(self.filters)+1, 2)
+
+		pds = self.plot_dict['periods']
+		LSM = self.plot_dict['LSM']
+		period = self.plot_dict['pvalue']
+		P_multi = self.plot_dict['P_multi']
+		seed = self.plot_dict['seed']
+		print("plotting line ",seed)
+		for ii,filt in enumerate(self.filters):
+			phase_obs = self.plot_dict['phase_obs'][filt]
+			mag_obs = self.plot_dict['mag_obs'][filt]
+			mag = self.plot_dict['mag'][filt]
+			scores = self.plot_dict['scores'][filt]
+			LSS = self.plot_dict['LSS'][filt]
+
+			sx = np.argsort(phase_obs)
+			ax[ii][0].plot(phase_obs[sx], np.array(mag_obs)[sx], 'o', mfc='none', mec = colors[ii])
+			ax[ii][0].plot(phase_obs[sx], np.array(mag)[sx], color = "black")
+			ax[ii][0].set_ylim(ax[ii][0].get_ylim()[::-1])
+			ax[ii][0].set_xlim(0,1)
+			ax[ii][0].set_ylabel(filt)
+			ax[ii][0].set_xticklabels([])
+
+			ax[ii][1].plot(pds, scores, color = colors[ii])
+			ax[ii][1].plot([LSS,LSS],[0,1], color = "dimgray", lw = 2)
+			ax[ii][1].plot([period,period],[0,1],'--', color = "black")
+			ax[ii][1].set_xlim(0, 2.*period)
+			ax[ii][1].set_ylim(0, max(scores))
+			ax[ii][1].set_xticklabels([])
+			ax[ii][1].set_yticklabels([])
+
+		plt.locator_params(axis='y', nticks=2)
+		ii = len(self.filters)
+		ax[ii][1].plot(pds, P_multi, color = colors[ii])
+		ax[ii][1].set_xlim(0, 2.*period)
+		ax[ii][1].set_ylim(0, max(P_multi))
+		ax[ii][1].plot([period,period],[0,1],'--', color = "black")
+		ax[ii][1].plot([LSM,LSM],[0,1], ':', color = "dimgray")
+
+		f.subplots_adjust(hspace=0.1, wspace=0.1)
+		f.delaxes(ax[ii][0])
+		ax[ii-1][0].set_xlabel("phase")
+		ax[ii][1].set_xlabel("period (days)")
+		ax[ii][1].set_yticklabels([])
+
+		f.savefig("lc_gatspy_fig_"+str(seed).rjust(10,'0')+".png", bbox_inches='tight')
+
+
+	def define_args(self):
+		self.parser.add_argument("-n", "--n_cores", 	type=int, help="Number of cores [0]")
+		self.parser.add_argument("-c", "--n_bin", 		type=int, help="Number of binaries [100000]")
+		self.parser.add_argument("-i", "--gal_file", 	type=str, help="Galaxy input file name")
+		self.parser.add_argument("-o", "--output_file", type=str, help="output file name")
+		self.parser.add_argument("-a", "--n_band", 		type=int, help="Nterms_band input for gatspy [2]")
+		self.parser.add_argument("-b", "--n_base", 		type=int, help="Nterms_base input for gatspy [2]")
+		self.parser.add_argument("-s", "--seed", 		type=int, help="random seed []")
+		self.parser.add_argument("-p", "--plots", 		action='store_true', help="Set to create plots")
+		self.parser.add_argument("-v", "--verbose", 	action='store_true', help="Set to show verbose output")
+		self.parser.add_argument("-l", "--opsim", 		action='store_true', help="set to run LSST OpSim, else run nobs =")
+
+
+	def apply_args(self):
+
+		args = self.parser.parse_args()
+		#to print out the options that were selected (probably some way to use this to quickly assign args)
+		opts = vars(args)
+		options = { k : opts[k] for k in opts if opts[k] != None }
+		print(options)
+
+		if (args.n_cores is not None):
+			self.n_cores = args.n_cores
+			if (n_cores > 1):
+				self.do_parallel = True
+		if (n_cores < 1):
+			self.n_cores = 1
+			self.do_parallel = False 
+
+		if (args.n_bin is not None):
+			self.n_bin = args.n_bin
+
+		if (args.gal_file is not None):
+			self.GalaxyFile = args.gal_file
+			
+		if (args.output_file is not None):
+			self.ofile = args.output_file
+
+		if (args.n_band is not None):
+			self.n_band = args.n_band
+		if (args.n_base is not None):
+			self.n_base = args.n_base
+
+		self.do_plot = args.plots
+		self.verbose = args.verbose
+		self.do_opsim = args.do_opsim
+
+		#set the random seed
+		if (args.seed is not None):
+			np.random.seed(seed = args.seed)
+		else:
+			np.random.seed()
+
+#
 	#run everything
 	def runAll(self):
+
+		self.define_args()
+		self.apply_args()
 
 		#get the summary cursor
 		getSummaryCursor()
