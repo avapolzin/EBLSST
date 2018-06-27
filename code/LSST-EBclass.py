@@ -8,7 +8,6 @@ import time
 import os
 from astropy import units, constants
 import astropy.stats as astroStats
-from astropy.coordinates import SkyCoord, ICRS
 import csv
 import multiprocessing, logging
 import pandas as pd
@@ -17,7 +16,6 @@ matplotlib.use('agg')
 import matplotlib.pyplot as plt
 #OpSim (in OpSimRun1) - http://ops2.lsst.org/docs/current/architecture.html
 import sqlite3
-import scipy.special as ss
 from scipy.interpolate import interp1d
 import scipy.stats
 
@@ -26,13 +24,15 @@ import ellc
 import gatspy
 from gatspy import datasets, periodic
 from gatspy.periodic import LombScargleMultiband, LombScargle, LombScargleFast, LombScargleMultibandFast
-import GxSampleThinDisklogitAMG as GxSample
+
+#our codes
+from BreivikGalaxyClass import BreivikGalaxyClass as galaxy
 
 class LSST-EBclass(object):
 
-    def __init__(self, *args,**kwargs):
+	def __init__(self, *args,**kwargs):
 
-    	self.do_plot = False 
+		self.do_plot = False 
 		self.verbose = False
 		self.do_parallel = False 
 		self.sigma_sys = 0.005  #systematic photometric error
@@ -46,260 +46,29 @@ class LSST-EBclass(object):
 		self.n_bin = 100000
 		self.n_band = 2
 		self.n_base = 2  
-		self.n_cores = 0
+		self.n_cores = 1
 
 		self.ofile = 'output_file.csv' #output file name
 		self.GalaxyFile ='../input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
-
-
-		self.plot_dict = None
-		self.return_dict = None
-
 		self db = sqlite3.connect('../db/minion_1016_sqlite.db')
+
+
+		#dictionaries handled by the multiprocessing manager
+		self.manager = multiprocessing.Manager()
+		self.return_dict = self.manager.dict()
+		self.plot_dict = self.manager.dict()	
 
 		self.parser = argparse.ArgumentParser()
 
 
-	#Some approximate function for deriving stellar parameters
-	def getRad(self, m):
-		#use stellar mass to get stellar radius (not necessary, read out by Katie's work)
-		if (m > 1):  #*units.solMass
-			eta = 0.57
-		else:
-			eta = 0.8
-		return (m)**eta #* units.solRad (units.solMass)
-
-	def calcTeff(self, L, R):
-		#use stellar radius and stellar luminosity to get the star's effective temperature
-		logTeff = 3.762 + 0.25*np.log10(L) - 0.5*np.log10(R) 
-		return 10.**logTeff
-	
-	def calclogg(self,m, L, T):
-		#use stellar mass, luminosity, and effective temperature to get log(gravity)
-		return np.log10(m) + 4.*np.log10(T) - np.log10(L) - 10.6071
-	
-	def getLum(self, m):
-		#use stellar mass to return stellar luminosit (not necessary, read out by Katie's work)
-		if (m<0.43):
-			cons = 0.23
-			coeff = 2.3
-		if m>0.43 and m<2.0:
-			cons = 1
-			coeff = 4
-		if m>2.0 and m<20.0:
-			cons = 1.5
-			coeff = 3.5
-		else:
-			cons= 3200
-			coeff = 1
-		return cons*(m**coeff) 
-
-	def afromP(self, m1, m2, P):
-		#returns the semimajor axis from the period and stellar masses
-		return (((P**2.) * constants.G * (m1 + m2) / (4*np.pi**2.))**(1./3.)).decompose().to(units.AU)
-
-	def Eggleton_RL(self, q,a):
-	#Eggleton (1983) Roche Lobe
-	#assuming synchronous rotation
-	#but taking the separation at pericenter
-		return a*0.49*q**(2./3.)/(0.6*q**(2./3.) + np.log(1. + q**(1./3.)))
-
-	#This is copied from Katie's GxRealizationThinDisk.py, but here we've created a method
-	#This will draw the binaries from the Galaxy realization
-	def LSSTsim(self):
-
-		def paramTransform(dat):
-			datMin = min(dat)-0.0001
-			datMax = max(dat)+0.0001
-			datZeroed = dat-datMin
-
-			datTransformed = datZeroed/(datMax-datMin)
-			return datTransformed
-
-		# SET TIME TO TRACK COMPUTATION TIME
-		##############################################################################
-		start_time = time.time()
-		#np.random.seed()
-
-		# CONSTANTS
-		##############################################################################
-		G = 6.67384* 10.**-11.0
-		c = 2.99792458* 10.**8.0
-		parsec = 3.08567758* 10.**16.
-		Rsun = 6.955* 10.**8.
-		Msun = 1.9891* 10.**30.
-		day = 86400.0
-		rsun_in_au = 215.0954
-		day_in_year = 365.242
-		sec_in_day = 86400.0
-		sec_in_hour = 3600.0
-		hrs_in_day = 24.0
-		sec_in_year = 3.15569*10**7.0
-		Tobs = 3.15569*10**7.0
-		geo_mass = G/c**2
-		m_in_AU = 1.496*10**11.0
+		#some counters
+		self.n_totalrun = 0
+		self.n_appmag_failed = 0
+		self.n_incl_failed = 0
+		self.n_period_failed = 0
+		self.n_radius_failed = 0
 
 
-		
-		mTotDisk = 2.15*10**10
-		binID = '0012'
-
-		##############################################################################
-		# STELLAR TYPES - KW
-		#
-		#   0 - deeply or fully convective low mass MS star
-		#   1 - Main Sequence star
-		#   2 - Hertzsprung Gap
-		#   3 - First Giant Branch
-		#   4 - Core Helium Burning
-		#   5 - First Asymptotic Giant Branch
-		#   6 - Second Asymptotic Giant Branch
-		#   7 - Main Sequence Naked Helium star
-		#   8 - Hertzsprung Gap Naked Helium star
-		#   9 - Giant Branch Naked Helium star
-		#  10 - Helium White Dwarf
-		#  11 - Carbon/Oxygen White Dwarf
-		#  12 - Oxygen/Neon White Dwarf
-		#  13 - Neutron Star
-		#  14 - Black Hole
-		#  15 - Massless Supernova
-		##############################################################################
-
-
-		# LOAD THE FIXED POPULATION DATA
-		##############################################################################
-		############## UNITS ################
-		#                                   #
-		# mass: Msun, porb: year, sep: rsun #
-		#                                   #
-		#####################################
-				
-		dts = {'names':('binNum','tBornBin','Time','tBorn1','tBorn2','commonEnv','id1','id2',
-				'm1','m2','m1Init','m2Init','Lum1','Lum2','rad1','rad2',
-				'T1','T2','massc1','massc2','radc1','radc2','menv1','menv2',
-				'renv1','renv2','spin1','spin2','rrol1','rrol2','porb','sep','ecc'),
-			'formats':('i','f','f','f','f','i','i','i',
-				'f','f','f','f','f','f','f','f',
-				'f','f','f','f','f','f','f','f',
-				'f','f','f','f','f','f','f','f','f')}
-				
-		#FixedPop = np.loadtxt('fixedData_'+binID+'.dat', delimiter = ',', dtype=dts)
-		FixedPop = pd.read_hdf(self.GalaxyFile, key='bcm')
-		FixedPopLog = np.loadtxt('fixedPopLogCm_'+binID+'.dat', delimiter = ',')
-				
-		# COMPUTE THE NUMBER AT PRESENT DAY NORMALIZED BY TOTAL MASS OF THE GX COMPONENT
-		##############################################################################
-		mTotFixed = sum(FixedPopLog[:,2])
-		nPop = int(len(FixedPop)*mTotDisk/mTotFixed)
-		print('The number of binaries in the Gx for: '+str(binID)+' is: '+str(nPop))
-			
-		# TRANSFORM THE FIXED POP DATA TO HAVE LIMITS [0,1] &
-		# COMPUTE THE BINWIDTH TO USE FOR THE KDE SAMPLE; SEE KNUTH_BIN_WIDTH IN ASTROPY
-		##############################################################################
-
-		# UNITS: 
-		# MASS [MSUN], ORBITAL PERIOD [LOG10(YEARS)], LUMINOSITIES [LSUN], RADII [RSUN]
-		#FixedPop['m1'] = FixedPop['mass_1'] #or maybe some more efficient way
-		###
-		#print (FixedPop['m1'])
-
-		FixedPop['m1'] = FixedPop['mass_1']
-		#print (FixedPop['m1'])
-		FixedPop['m2'] = FixedPop['mass_2']
-		FixedPop['Lum1'] = FixedPop['lumin_1']
-		FixedPop['Lum2'] = FixedPop['lumin_2']
-		FixedPop['rad1'] = FixedPop['rad_1']
-		FixedPop['rad2'] = FixedPop['rad_2']
-
-		m1Trans = ss.logit(paramTransform(FixedPop['m1']))
-		bwM1 = astroStats.scott_bin_width(m1Trans)
-				
-		m2Trans = ss.logit(paramTransform(FixedPop['m2']))
-		bwM2 = astroStats.scott_bin_width(m2Trans)
-				
-		porbTrans = ss.logit(paramTransform(np.log10(FixedPop['porb'])))
-		bwPorb = astroStats.scott_bin_width(porbTrans)
-				
-		Lum1Trans = ss.logit(paramTransform(FixedPop['Lum1']))
-		bwLum1 = astroStats.scott_bin_width(FixedPop['Lum1'])
-
-		Lum2Trans = ss.logit(paramTransform(FixedPop['Lum2']))
-		bwLum2 = astroStats.scott_bin_width(FixedPop['Lum2'])
-					
-		# The eccentricity is already transformed, but only fit KDE to ecc if ecc!=0.0
-		eIndex, = np.where(FixedPop['ecc']>1e-2)
-		if len(eIndex) > 50:
-
-			eccTrans = FixedPop['ecc']
-			for jj in eccTrans.keys():
-				if eccTrans[jj] > 0.999:
-					eccTrans[jj] = 0.999
-				elif eccTrans[jj] < 1e-4:
-					eccTrans[jj] = 1e-4
-			eccTrans = ss.logit(eccTrans)
-			bwEcc = astroStats.scott_bin_width(eccTrans)
-		else:
-			bwEcc = 100.0
-
-		rad1Trans = ss.logit(paramTransform(FixedPop['rad1']))
-		bwRad1 = astroStats.scott_bin_width(rad1Trans)
-
-		rad2Trans = ss.logit(paramTransform(FixedPop['rad2']))
-		bwRad2 = astroStats.scott_bin_width(rad2Trans)
-		#print(bwEcc,bwPorb,bwM1,bwM2,bwLum1,bwLum2,bwRad1,bwRad2)
-		popBw = min(bwEcc,bwPorb,bwM1,bwM2,bwLum1,bwLum2,bwRad1,bwRad2)
-				
-		# GENERATE THE DATA LIST DEPENDING ON THE TYPE OF COMPACT BINARY TYPE
-		##############################################################################
-		type1Save = 1
-		if type1Save < 14 and len(eIndex)>50:
-			print('both bright stars and eccentric')
-			datList = np.array((m1Trans, m2Trans, porbTrans, eccTrans, rad1Trans, rad2Trans, Lum1Trans, Lum2Trans))
-		elif type1Save < 14 and len(eIndex)<50:
-			print('both bright stars and circular')
-			datList = np.array((m1Trans, m2Trans, porbTrans, rad1Trans, rad2Trans, Lum1Trans, Lum2Trans))
-						
-		# GENERATE THE KDE FOR THE DATA LIST
-		##############################################################################
-		if (self.verbose):
-			print(popBw)
-			print(datList)
-
-		sampleKernel = scipy.stats.gaussian_kde(datList)#, bw_method=popBw)
-					
-				
-		# CALL THE MONTE CARLO GALAXY SAMPLE CODE
-		##############################################################################
-		print('nSample: '+str(self.n_bin))
-		output = multiprocessing.Queue()
-		processes = [multiprocessing.Process(target = GxSample.GxSample, \
-						args = (x, self.n_cores, FixedPop, sampleKernel,\
-						binID, self.n_bin, popBw, len(eIndex), Tobs, output)) \
-						for x in range(self.n_cores)]
-		for p in processes:
-			p.start()
-
-		for p in processes:
-			p.join()
-
-		nSRC = [output.get() for p in processes]
-				
-		print('The number of sources in pop '+binID+' is ', nSRC)
-
-		gxDatTot = []
-		for kk in range(self.n_cores):
-			print(kk)
-			if os.path.getsize('gxRealization_'+str(kk)+'_'+str(binID)+'.dat') > 0:
-				gxReal = np.loadtxt('gxRealization_'+str(kk)+'_'+str(binID)+'.dat', delimiter = ',')
-			else:
-				gxReal = []
-			if len(gxReal)>0:
-				gxDatTot.append(gxReal)
-			os.remove('gxRealization_'+str(kk)+'_'+str(binID)+'.dat')
-		gxDatSave = np.vstack(gxDatTot)
-		print(np.shape(gxDatSave))
-
-		return gxDatSave
 
 	#database manipulation
 	def getSummaryCursor(self):
@@ -461,6 +230,172 @@ class LSST-EBclass(object):
 
 		f.savefig("lc_gatspy_fig_"+str(seed).rjust(10,'0')+".png", bbox_inches='tight')
 
+	def run_ellc_gatspy(self, j, return_dict, plot_dict):
+		#this is the general simulation - ellc light curves and gatspy periodograms
+		#global filters, sigma_sys, totaltime, cadence
+
+		print("here in ellc_gatspy_sim")
+		totalt = []
+		totalmag = []
+		totaldmag = []
+		totalfilts = []
+		
+
+		if (verbose):
+			print (j, 't_zero = ', t_zero)
+			print (j, 'period = ', period)
+			print (j, 'semimajor = ', a)
+			print (j, 'massrat = ', q)
+			print (j, 'f_c = ', f_c)
+			print (j, 'f_s = ', f_s)
+			print (j, 'ld_1 = ', ld_1)
+			print (j, 'ld_2 = ', ld_2)
+
+			print (j, 'radius_1 = ', R_1)
+			print (j, 'radius_2 = ', R_2)
+			print (j, 'incl = ', incl)
+			print (j, 'sbratio = ', sbratio)
+			print (j, 'Teff1 = ', Teff1)
+			print (j, 'Teff2 = ', Teff2)
+
+		if (do_plot):
+			# for plotting the periodograms
+			for_plotting = dict()
+			pds = np.linspace(0.2, 2.*period, 10000)
+			for_plotting['periods'] = pds
+			for_plotting['seed'] = bnum 
+
+		#set the random seed
+		#np.random.seed(seed = seed)
+
+
+		delta_mag = 0. 
+
+
+		for i, filt in enumerate(self.filters):
+
+			if (opsim):
+				print("I'm running code with OpSim!")
+				time = getexpDate(cursor, dbID_OpSim, filt)
+				nobs = len(time)
+				print("time_OpSim = ", time)
+			else:
+				print("I'm NOT running code with OpSim!")
+				nobs = int(round(totaltime / (cadence * len(filters)))) 
+				time = np.sort(totaltime * np.random.random(size=nobs))
+				#time.sort() #maybe not needed and taking time
+			drng = max(time) - min(time)
+
+			# if (time_OpSim[0] != None):
+			if (time[0] != None):
+
+				filtellc = filt
+				if (filt == 'y_'):
+					filtellc = 'z_' #because we don't have limb darkening for y_
+				##########################
+				#Can we find limb darkening coefficients for y band??  (Then we wouldn't need this trick)
+				##########################
+				#create the light curve for this filter
+
+
+
+
+				if (verbose):
+					print (j, 'ldc_1 = ', ldc_1)
+					print (j, 'ldc_2 = ', ldc_2)    
+					print (j, 'time = ', time[0:10])
+					print (j, 'lc = ', lc[0:10])
+
+				if (min(lc) >= 0):
+					magn = -2.5*np.log10(lc)
+					magnitude = appmag + magn   
+					#Ivezic 2008, https://arxiv.org/pdf/0805.2366.pdf , Table 2
+					sigma2_rand = getSig2Rand(filt, magnitude)   #random photometric error
+					sigma = ((sigma_sys**2.) + (sigma2_rand))**(1./2.)
+
+					#now add the uncertaintly onto the magnitude
+					#magnitude_obs = magnitude
+					magnitude_obs = [np.random.normal(loc=x, scale=sig) for (x,sig) in zip(magnitude, sigma)]
+
+					delta_mag = max([delta_mag, abs(min(magnitude_obs) - max(magnitude_obs))])
+
+					if (verbose):   
+						print(j, 'magn = ', magn[0:10])
+						print(j, 'magnitude = ', magnitude[0:10])  
+						print(j, 'magnitude_obs = ', magnitude_obs[0:10])  
+						print(j, "sigma2_rand = ", sigma2_rand[0:10])
+						print(j, "sigma = ", sigma[0:10])
+						print(j, "delta_mag = ", delta_mag)
+
+					t = np.array(time)
+					totalt.extend(t)
+					mag = np.array(magnitude_obs)
+					totalmag.extend(mag)
+					dmag = np.array(sigma)
+					totaldmag.extend(dmag)
+					filts = np.array(filt)
+					specfilt = nobs*[filt]
+					totalfilts.extend(specfilt)
+
+					
+					#model = LombScargle(fit_period = True)
+					model = LombScargleFast(fit_period = True)
+					model.optimizer.period_range = (0.2, drng)
+					model.fit(t, mag, dmag)
+					LSS = model.best_period
+					print ('LSS running')
+					return_dict[j] = return_dict[j] + [LSS]
+					print ('LSS in return_dict')
+					if (verbose): 
+						print(j, "LSS = ",LSS)
+
+
+					if (do_plot):
+						if (i == 0):
+							for_plotting['phase_obs'] = dict()
+							for_plotting['mag_obs'] = dict()
+							for_plotting['mag'] = dict()
+							for_plotting['scores'] = dict()
+							for_plotting['LSS'] = dict()
+
+
+						phase_obs = np.array([(tt % period)/period for tt in time])
+						scores = model.score(pds)
+						for_plotting['phase_obs'][filt] = phase_obs
+						for_plotting['mag_obs'][filt] = magnitude_obs
+						for_plotting['mag'][filt] = magnitude
+						for_plotting['scores'][filt] = scores
+						for_plotting['LSS'][filt] = LSS
+
+				else:
+					return_dict[j] = return_dict[j] + [-999.]
+					if (verbose):
+						print(j, "bad fluxes", filt)
+						#raise Exception('stopping')
+
+
+			if (len(totalmag) > 0): 
+				t = np.array(totalt)
+				mag = np.array(totalmag)
+				dmag = np.array(totaldmag)
+				filts = np.array(totalfilts)
+				drng = max(t) - min(t)
+				print("drng",drng)
+
+				model = LombScargleMultiband(Nterms_band=n_band, Nterms_base=n_base, fit_period = True)
+				#model = LombScargleMultibandFast(Nterms=2, fit_period = True) #this is not working in parallel for some reason
+				model.optimizer.period_range = (0.2, drng)
+				model.fit(t, mag, dmag, filts)
+				LSM = model.best_period
+				print ('LSM running')
+				return_dict[j] = return_dict[j] + [LSM]
+				#n_totalrun += 1
+				print ('LSM in return_dict')
+				return_dict[j] = return_dict[j] + [delta_mag]
+			else:
+				return_dict[j] = return_dict[j] + [-999.]
+				return_dict[j] = return_dict[j] + [-999.]
+
 
 	def define_args(self):
 		self.parser.add_argument("-n", "--n_cores", 	type=int, help="Number of cores [0]")
@@ -515,7 +450,65 @@ class LSST-EBclass(object):
 		else:
 			np.random.seed()
 
-#
+
+	def checkIfObservable(self, EB):
+
+		self.n_totalrun += 1
+	
+		if (EB.appmag <= 11. or EB.appmag>= 24.):
+			EB.appmag_failed = 1
+			self.n_appmag_failed += 1 
+		
+		incl = EB.inclination * 180/np.pi
+		min_incl = 90. - np.arctan2(EB.r1 + EB.r2, 2.*EB.a)*180./np.pi
+		if (incl <= min_incl):
+			EB.incl_failed = 1
+			self.n_incl_error += 1
+		
+		if (EB.period >= 2. * self.totaltime):
+			EB.period_failed = 1
+			self.n_period_error +=1
+				
+		if (EB.R_1 <= 0 or EB.R_1 >=1 or EB.R_2 <=0 or EB.R_2 >= 1 or EB.R_1e >=1 or EB.R_2e >=1):
+			EB.radius_failed = 1
+			self.n_radius_failed += 1
+			
+		if (EB.radius_failed or EB.period_failed or EB.incl_failed or EB.appmag_failed):
+			EB.observable = False
+
+
+	def getEB(self, EB, line):
+		EB = EBclass()
+
+		#solar units
+		EB.m1 = line[0]
+		EB.m2 = line[1]
+		EB.r1 = line[4]
+		EB.r2 = line[5]
+		EB.L1 = line[6]
+		EB.L2 = line[7]
+		EB.period = 10.**line[2] #days
+		EB.eccentricity = line[3]
+		EB.inclination = line[12] #radians
+		EB.omega = line[13] #radians
+		EB.dist = line[11] #kpc
+		#pc
+		EB.xGx = line[8] 
+		EB.yGx = line[9] 
+		EB.zGx = line[10] 
+
+		EB.t_zero = np.random.random() * period
+
+		EB.initialize()
+
+		self.checkIfObservable(EB)
+
+		print(EB)
+
+		return EB
+
+
+
 	#run everything
 	def runAll(self):
 
@@ -523,4 +516,101 @@ class LSST-EBclass(object):
 		self.apply_args()
 
 		#get the summary cursor
-		getSummaryCursor()
+		if (self.do_opsim):
+			self.getSummaryCursor()
+
+		#run Katie's code to generate the binaries
+		g = Galaxy()
+		gxDat = g.LSSTsim()
+		print(gxDat)
+
+		#https://docs.python.org/2/howto/argparse.html
+		n_appmag_error = 0
+		n_incl_error = 0
+		n_period_error = 0
+		n_R_error = 0
+		n_totalrun = 0
+
+
+		#if we want logging
+		#logger = multiprocessing.log_to_stderr()
+		##logger.setLevel(logging.DEBUG)
+		#logger.setLevel(multiprocessing.SUBDEBUG)
+
+
+
+		csvfile = open(ofile, 'wt')
+		csvwriter = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
+		csvwriter.writerow(['PERIOD', 'MASS_1', 'MASS_2', 'RADIUS_1', 'RADIUS_2', 'a', 'INCLINATION', 'MIN_INCLINATION', 'xGx', 'yGx', 'zGx', 'dist_kpc', 'eccentricity', 'max(app_magnitude)', 'appmag_error', 'inclination_error', 'period_error', 'radius_error', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'LSM_PERIOD', 'delta_mag', 'chi2', 'mean(dmag)'])
+		
+
+		jobs = []
+		j = 0
+
+		for i, line in enumerate(gxDat):
+
+			#define the binary parameters
+			EB = getEB(line)
+
+			#get the field ID number from OpSim where this binary would be observed
+			if (self.do_opsim):
+				EB.OpSimID = self.getFieldID(EB.RA, EB.Dec)
+
+			output = [period, m_1, m_2, R_1, R_2, a, incl, min_incl, xGx, yGx, zGx, dist_kpc, ecc, appmag, appmag_error, incl_error, period_error, R_error]
+				
+			if (EB.observable):
+				return_dict[j] = EB
+				plot_dict[j] = dict()
+				p = multiprocessing.Process(target=run_ellc_gatspy, args=(j, return_dict, plot_dict))
+				jobs.append(p)
+				j += 1
+			else:
+				for filt in filters:
+					output.append(-999) #LSS
+				output.append(-999) #LSM
+				csvwriter.writerow(output)
+
+				############################## 
+			if (len(jobs) == n_procs or (i >= n_bin and len(jobs) > 0)):
+				#print ('n_appmag_errorGx = ', n_appmag_errorGx)
+				print ('n_appmag_error = ',  n_appmag_error)
+				#print ('n_incl_errorGx = ', n_incl_errorGx)
+				print ('n_incl_error = ', n_incl_error)
+				#print ('n_period_errorGx = ', n_period_errorGx)
+				print ('n_period_error = ', n_period_error)
+				#print ('n_R_errorGx = ', n_R_errorGx)
+				print ('n_R_error = ', n_R_error)
+				#print ('n_totalrunGx = ', n_totalrunGx)
+				print ('n_totalrun = ', n_totalrun
+					)
+					### makes printed 1/0 redundant - possible we want to remove ###
+				if (do_parallel):
+					for k,job in enumerate(jobs):
+						print("starting job ",k)
+						x = job.start()
+					for k,job in enumerate(jobs):
+						print("joining job ",k)
+						job.join()
+				else:
+					for k,job in enumerate(jobs):
+						print("running job",k)
+						job.run()
+
+				for j in range(n_procs):
+					csvwriter.writerow(return_dict[j])
+					csvfile.flush()
+					if (do_plot):
+						if ('LSM' in plot_dict[j]):
+							 make_plots(plot_dict[j])
+
+
+				 #raise Exception('stopping')
+				jobs = []
+				j = 0
+
+			if (i > n_bin):
+			   break
+
+		csvfile.close()
+
+
