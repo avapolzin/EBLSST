@@ -18,3 +18,5 @@ __pycache__
 # databases #
 ##########3
 *.db
+
+*.csv
