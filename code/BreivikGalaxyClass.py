@@ -4,6 +4,9 @@ import scipy.stats
 import multiprocessing 
 import numpy as np
 import os
+import time
+import pandas as pd
+import astropy.stats as astroStats
 
 #This is copied from Katie's GxRealizationThinDisk.py, but here we've created a Class
 #This will draw the binaries from the Galaxy realization
@@ -12,13 +15,14 @@ class BreivikGalaxyClass(object):
 	def __init__(self, *args,**kwargs):
 		self.verbose = False
 		self.GalaxyFile ='../input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
+		self.GalaxyFileLogPrefix ='../input/fixedPopLogCm_'
+
 		self.n_bin = 100000
 		self.n_cores = 1
 		self.popID = '0012'
 
 
-
-	def GxSample(self, x, pop, sampleKernel bw, nEcc, Tobs, output):
+	def GxSample(self, x, pop, sampleKernel, bw, nEcc, Tobs, output):
 		def untransform(dat, datSet):
 			datMin = min(datSet)
 			datMax = max(datSet)
@@ -106,7 +110,6 @@ class BreivikGalaxyClass(object):
 		rad2 = 10**(untransform(rad2T, pop['rad2']))
 		Lum1 = 10**(untransform(Lum1T, pop['Lum1']))
 		Lum2 = 10**(untransform(Lum2T, pop['Lum2']))
-		print('you should see me!'       ) 
 		
 		# COMPUTE THE POSITION AND ORIENTATION OF EACH BINARY
 		##############################################################################
@@ -138,8 +141,6 @@ class BreivikGalaxyClass(object):
 		radAng = radTotAU/dist
 		binEclipseIndex, = np.where(radAng>inc*4.8e-6)
 	 
-		print(len(binEclipseIndex), len(binDat))
-
 		np.savetxt(gxFile, binDat, delimiter = ',')     
 				
 		#gxFile.close() 
@@ -223,7 +224,7 @@ class BreivikGalaxyClass(object):
 				'f','f','f','f','f','f','f','f','f')}
 				
 		FixedPop = pd.read_hdf(self.GalaxyFile, key='bcm')
-		FixedPopLog = np.loadtxt('fixedPopLogCm_'+self.popID+'.dat', delimiter = ',')
+		FixedPopLog = np.loadtxt(self.GalaxyFileLogPrefix+self.popID+'.dat', delimiter = ',')
 				
 		# COMPUTE THE NUMBER AT PRESENT DAY NORMALIZED BY TOTAL MASS OF THE GX COMPONENT
 		##############################################################################
@@ -325,7 +326,6 @@ class BreivikGalaxyClass(object):
 
 		gxDatTot = []
 		for kk in range(self.n_cores):
-			print(kk)
 			if os.path.getsize('gxRealization_'+str(kk)+'_'+str(self.popID)+'.dat') > 0:
 				gxReal = np.loadtxt('gxRealization_'+str(kk)+'_'+str(self.popID)+'.dat', delimiter = ',')
 			else:
@@ -334,6 +334,5 @@ class BreivikGalaxyClass(object):
 				gxDatTot.append(gxReal)
 			os.remove('gxRealization_'+str(kk)+'_'+str(self.popID)+'.dat')
 		gxDatSave = np.vstack(gxDatTot)
-		print(np.shape(gxDatSave))
 
 		return gxDatSave

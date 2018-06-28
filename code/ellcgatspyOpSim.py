@@ -202,11 +202,11 @@ def LSSTsim(Ncores, Nbin):
 	##############################################################################\
 	print(popBw)
 	print(datList)
-	for i,x in enumerate(datList):
-		print(len(x))
-		f = plt.figure()
-		plt.plot(x)
-		f.savefig(str(i)+".png")
+	# for i,x in enumerate(datList):
+	# 	print(len(x))
+	# 	f = plt.figure()
+	# 	plt.plot(x)
+	# 	f.savefig(str(i)+".png")
 
 	sampleKernel = scipy.stats.gaussian_kde(datList)#, bw_method=popBw)
 				
@@ -739,8 +739,7 @@ if __name__ == "__main__":
 
 
 	csvfile = open(ofile, 'wt')
-	csvwriter = csv.writer(csvfile, delimiter=',',
-								quotechar='|', quoting=csv.QUOTE_MINIMAL)
+	csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 	csvwriter.writerow(['PERIOD', 'MASS_1', 'MASS_2', 'RADIUS_1', 'RADIUS_2', 'a', 'INCLINATION', 'MIN_INCLINATION', 'xGx', 'yGx', 'zGx', 'dist_kpc', 'eccentricity', 'max(app_magnitude)', 'appmag_error', 'inclination_error', 'period_error', 'radius_error', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'LSM_PERIOD', 'delta_mag', 'chi2', 'mean(dmag)'])
 	
 
