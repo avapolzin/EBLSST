@@ -72,11 +72,11 @@ if __name__ == "__main__":
 					job.run()
 
 			#print the output
-			for j in range(n_procs):
-				worker.writeOutputLine(j)
+			for j in range(worker.n_cores):
+				worker.writeOutputLine(worker.return_dict[j])
 				csvfile.flush()
-				if (do_plot):
-					if ('LSM' in plot_dict[j]):
+				if (worker.do_plot):
+					if (worker.return_dict[j]['LSM'] != -999):
 						 worker.make_gatspy_plots(j)
 
 
