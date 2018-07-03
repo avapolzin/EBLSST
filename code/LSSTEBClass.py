@@ -33,7 +33,9 @@ class LSSTEBClass(object):
 		self.verbose = False
 		self.doOpSim = False
 
+		self.doLSM = True
 		self.do_parallel = False 
+
 		self.years = 10.
 		self.totaltime = 365.* self.years
 		self.cadence = 3.
@@ -121,14 +123,15 @@ class LSSTEBClass(object):
 			ax[ii][1].set_xticklabels([])
 			ax[ii][1].set_yticklabels([])
 
-		plt.locator_params(axis='y', nticks=2)
-		P_multi = EB.LSMmodel.periodogram(pds)
-		ii = len(self.filters)
-		ax[ii][1].plot(pds, P_multi, color = colors[ii])
-		ax[ii][1].set_xlim(0, 2.*period)
-		ax[ii][1].set_ylim(0, max(P_multi))
-		ax[ii][1].plot([period,period],[0,1],'--', color = "black")
-		ax[ii][1].plot([LSM,LSM],[0,1], ':', color = "dimgray")
+		if (self.doLSM):
+			plt.locator_params(axis='y', nticks=2)
+			P_multi = EB.LSMmodel.periodogram(pds)
+			ii = len(self.filters)
+			ax[ii][1].plot(pds, P_multi, color = colors[ii])
+			ax[ii][1].set_xlim(0, 2.*period)
+			ax[ii][1].set_ylim(0, max(P_multi))
+			ax[ii][1].plot([period,period],[0,1],'--', color = "black")
+			ax[ii][1].plot([LSM,LSM],[0,1], ':', color = "dimgray")
 
 		f.subplots_adjust(hspace=0.1, wspace=0.1)
 		f.delaxes(ax[ii][0])
@@ -184,7 +187,7 @@ class LSSTEBClass(object):
 					print(j, 'delta_mag = ', EB.deltaMag[filt])
 					print(j, 'LSS = ',EB.LSS[filt])
 
-		if (len(allObsDates) > 0): 
+		if (len(allObsDates) > 0 and self.doLSM): 
 			drng = max(allObsDates) - min(allObsDates)
 			model = LombScargleMultiband(Nterms_band=self.n_band, Nterms_base=self.n_base, fit_period = True)
 			model.optimizer.period_range = (0.2, drng)
@@ -196,7 +199,7 @@ class LSSTEBClass(object):
 
 
 		#not sure if I need to do this...
-		#self.return_dict[j] = EB
+		self.return_dict[j] = EB
 
 
 
