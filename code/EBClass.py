@@ -23,6 +23,7 @@ class EBClass(object):
 		self.yGx = None #*units.parsec
 		self.zGx = None #*units.parsec
 		self.lineNum = 0
+		self.verbose = False
 
 		#these will be calculated after calling self.initialize()
 		self.RL1 = None
@@ -64,7 +65,8 @@ class EBClass(object):
 		self.deltaMag = dict()
 		self.maxDeltaMag = 0.
 		self.doOpSim = True
-		self.LSSTcursor = None
+		self.fieldCursor = None
+		self.summaryCursor = None
 		self.observable = True
 		self.appmag_failed = 0
 		self.incl_failed = 0
@@ -224,35 +226,38 @@ class EBClass(object):
 		#uses RA/Dec (from galactic coordinates) to return locatiom's fieldID according to OpSim
 		#field-of-view == 3.5-degree diameter (also returned with fieldFov key)
 
-		RA = self.LSSTcursor[:,1].astype(float)
-		Dec = self.LSSTcursor[:,2].astype(float)
+		RA = self.fieldCursor[:,1].astype(float)
+		Dec = self.fieldCursor[:,2].astype(float)
 		dbCoord = SkyCoord(ra = RA*units.degree, dec = Dec*units.degree, frame='icrs')
 		inCoord = SkyCoord(ra = myRA*units.degree, dec = myDEC*units.degree, frame='icrs')
 
 		imin, sep2d, dist3d = inCoord.match_to_catalog_sky(dbCoord)
 
-		dbID = (self.LSSTcursor[imin,0]).astype('int') 
+		dbID = (self.fieldCursor[imin,0]).astype('int') 
 
 		mask = np.where(sep2d.to(units.degree).value > deglim)
-
 		#this check apparently isn't necessary because it looks like the entire sky is covered with fieldIDs, but I suppose some of these fieldIDs don't have any observation dates (in the northern hemisphere)
 		if (len(mask[0]) > 0):
-			print (mask[0])
+			print(mask[0])
 			print("WARNING: coordinate outside LSST FOV", myRA[mask], myDec[mask])
 			dbID[mask] = -999
+
+		if (self.verbose):
+			print("have Field ID", dbID)
 
 		return dbID
 
 	def getOpSimDates(self, filtin):
 		#matches FieldID to existing OpSim database ID and matches observation filters to get dates (in seconds since the start of the 
 		# survey)
-		date = c[:,3]
-		FieldID = c[:,0]
-		filt = c[:,4]
+		FieldID = self.summaryCursor[:,0].astype('int')
+		date = self.summaryCursor[:,1].astype('float')
+		filt = self.summaryCursor[:,2]
 
-		posIDFilt = np.where(np.logical_and(FieldID == str(self.OpSimID), filt == filtin[:-1]))
+		posIDFilt = np.where(np.logical_and(FieldID == self.OpSimID, filt == filtin[:-1]))
+
 		if (self.verbose):
-			print("posIDFilt = ", posIDFilt)
+			print("posIDFilt = ", posIDFilt, filtin)
 
 		OpSimdates = posIDFilt[0]
 
@@ -311,23 +316,22 @@ class EBClass(object):
 		self.absMagMean = self.Mbol
 		self.appMagMean = self.absMagMean + 5.*np.log10(self.dist*100.)  #multiplying by 1000 to get to parsec units
 
-		#if we're using OpSim, then get the field ID
-		#get the field ID number from OpSim where this binary would be observed
-		if (self.doOpSim):
-			self.OpSimID = self.getFieldID(self.RA, self.Dec)
-
 		for f in self.filters:
 			self.LSS[f] = -999.
 
 		#check if we can observe this (not accounting for the location in galaxy)
 		self.checkIfObservable()
 
+		#if we're using OpSim, then get the field ID
+		#get the field ID number from OpSim where this binary would be observed
+		if (self.doOpSim and self.observable):
+			self.OpSimID = self.getFieldID(self.RA, self.Dec)
 
 	def observe(self, filt):
 
 		#get the observation dates
 		if (self.doOpSim):
-			self.obsDates[filt] = getOpSimDates(filt)
+			self.obsDates[filt] = self.getOpSimDates(filt)
 		else:
 			nobs = int(round(self.totaltime / (self.cadence * self.Nfilters)))
 			self.obsDates[filt] = np.sort(self.totaltime * np.random.random(size=nobs))

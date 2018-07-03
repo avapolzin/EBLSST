@@ -89,8 +89,8 @@ if __name__ == "__main__":
 
 	#get the summary cursor for OpSim, if necessary
 	if (worker.doOpSim):
-		print('Getting OpSim cursor...')
-		worker.getSummaryCursor()
+		print('Getting OpSim cursors...')
+		worker.getCursors()
 
 
 	#if we want logging
@@ -103,8 +103,7 @@ if __name__ == "__main__":
 	worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
 	#write header
-	worker.csvwriter.writerow(['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'RA', 'Dec', 'd', 'appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD', 'delta_mag', 'chi2', 'mean(dmag)'])
-	
+	worker.writeOutputLine(None, header=True)
 
 	jobs = []
 	j = 0

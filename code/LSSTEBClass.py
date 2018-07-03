@@ -68,13 +68,18 @@ class LSSTEBClass(object):
 
 
 	#database manipulation
-	def getSummaryCursor(self):
+	def getCursors(self):
 		#gets SQlite cursor to pull information from OpSim
 		self.db = sqlite3.connect(self.dbFile)
 		cursor = self.db.cursor()
-		cursor.execute("SELECT fieldid, fieldra, fielddec, expDate, filter FROM summary") 
-		self.cursor = np.array(cursor.fetchall()) #NOTE: this takes a LONG time
-		print("have cursor.")
+
+		cursor.execute("SELECT fieldid, expDate, filter FROM summary") 
+		self.summaryCursor = np.array(cursor.fetchall()) #NOTE: this takes a LONG time
+		print("have summary cursor.")
+
+		cursor.execute("SELECT fieldid, fieldra, fielddec FROM field")
+		self.fieldCursor = np.array(cursor.fetchall()) #NOTE: this takes a LONG time
+		print("have field cursor.")
 
 
 
@@ -176,7 +181,7 @@ class LSSTEBClass(object):
 					print(j, 'filter = ', filt)  
 					print(j, 'obsDates = ', EB.obsDates[filt][0:10])
 					print(j, 'appMagObs = ', EB.appMagObs[filt][0:10])
-					print(j, 'delta_mag = ', EB.delta_mag[filt])
+					print(j, 'delta_mag = ', EB.deltaMag[filt])
 					print(j, 'LSS = ',EB.LSS[filt])
 
 		if (len(allObsDates) > 0): 
@@ -222,11 +227,13 @@ class LSSTEBClass(object):
 		#for observations
 		EB.filters = self.filters
 		EB.doOpSim = self.doOpSim
-		EB.LSSTcursor = self.cursor
+		EB.summaryCursor = self.summaryCursor
+		EB.fieldCursor = self.fieldCursor
 		EB.years = self.years
 		EB.totaltime = self.totaltime 
 		EB.cadence= self.cadence 
 		EB.Nfilters = len(self.filters)
+		EB.verbose = self.verbose
 		EB.initialize()
 
 		#some counters for how many EBs we could potentially observe with LSST
@@ -239,12 +246,16 @@ class LSSTEBClass(object):
 		return EB
 
 
-	def writeOutputLine(self, EB):
-		output = [EB.period, EB.m1, EB.m2, EB.r1, EB.r2, EB.eccentricity, EB.inclination, EB.RA, EB.Dec, EB.dist, EB.appMagMean, EB.maxDeltaMag, EB.appmag_failed, EB.incl_failed, EB.period_failed, EB.radius_failed]
+	def writeOutputLine(self, EB, header = False):
+		if (header):
+			self.csvwriter.writerow(['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'RA', 'Dec', 'd', 'appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD', 'delta_mag', 'chi2', 'mean(dmag)'])
 
-		#this is for gatspt
-		for filt in self.filters:
-			output.append(EB.LSS[filt]) 
-		output.append(EB.LSM) 
-		self.csvwriter.writerow(output)	
+		else:
+			output = [EB.period, EB.m1, EB.m2, EB.r1, EB.r2, EB.eccentricity, EB.inclination, EB.RA, EB.Dec, EB.dist, EB.appMagMean, EB.maxDeltaMag, EB.appmag_failed, EB.incl_failed, EB.period_failed, EB.radius_failed]
+
+			#this is for gatspt
+			for filt in self.filters:
+				output.append(EB.LSS[filt]) 
+			output.append(EB.LSM) 
+			self.csvwriter.writerow(output)	
 
