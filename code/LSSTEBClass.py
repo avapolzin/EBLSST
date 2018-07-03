@@ -3,7 +3,6 @@
 
 #python libraries
 import numpy as np
-import argparse
 import os
 from astropy import units, constants
 import csv
@@ -49,14 +48,14 @@ class LSSTEBClass(object):
 
 		self.ofile = 'output_file.csv' #output file name
 		self.GalaxyFile ='../input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
-		self.db = sqlite3.connect('../db/minion_1016_sqlite.db')
+		self.dbFile = '../db/minion_1016_sqlite.db' #for the OpSim database
+		self.db = None
 		self.cursor = None
 
 		#dictionaries handled by the multiprocessing manager
 		self.manager = multiprocessing.Manager()
 		self.return_dict = self.manager.dict()
 
-		self.parser = argparse.ArgumentParser()
 		self.csvwriter = None #will hold the csvwriter object
 
 		#some counters
@@ -71,6 +70,7 @@ class LSSTEBClass(object):
 	#database manipulation
 	def getSummaryCursor(self):
 		#gets SQlite cursor to pull information from OpSim
+		self.db = sqlite3.connect(self.dbFile)
 		cursor = self.db.cursor()
 		cursor.execute("SELECT fieldid, fieldra, fielddec, expDate, filter FROM summary") 
 		self.cursor = np.array(cursor.fetchall()) #NOTE: this takes a LONG time
@@ -158,8 +158,8 @@ class LSSTEBClass(object):
 
 				#run gatspy for this filter
 				drng = max(EB.obsDates[filt]) - min(EB.obsDates[filt])
-				#model = LombScargle(fit_period = True)
-				model = LombScargleFast(fit_period = True)
+				model = LombScargle(fit_period = True)
+				#model = LombScargleFast(fit_period = True)
 				model.optimizer.period_range = (0.2, drng)
 				model.fit(EB.obsDates[filt], EB.appMagObs[filt], EB.appMagObsErr[filt])
 				EB.LSS[filt] = model.best_period
@@ -192,60 +192,6 @@ class LSSTEBClass(object):
 
 		#not sure if I need to do this...
 		self.return_dict[j] = EB
-
-	def define_args(self):
-		self.parser.add_argument("-n", "--n_cores", 	type=int, help="Number of cores [0]")
-		self.parser.add_argument("-c", "--n_bin", 		type=int, help="Number of binaries [100000]")
-		self.parser.add_argument("-i", "--gal_file", 	type=str, help="Galaxy input file name")
-		self.parser.add_argument("-o", "--output_file", type=str, help="output file name")
-		self.parser.add_argument("-a", "--n_band", 		type=int, help="Nterms_band input for gatspy [2]")
-		self.parser.add_argument("-b", "--n_base", 		type=int, help="Nterms_base input for gatspy [2]")
-		self.parser.add_argument("-s", "--seed", 		type=int, help="random seed []")
-		self.parser.add_argument("-p", "--plots", 		action='store_true', help="Set to create plots")
-		self.parser.add_argument("-v", "--verbose", 	action='store_true', help="Set to show verbose output")
-		self.parser.add_argument("-l", "--opsim", 		action='store_true', help="set to run LSST OpSim, else run nobs =")
-
-
-	def apply_args(self):
-		#https://docs.python.org/2/howto/argparse.html
-		args = self.parser.parse_args()
-		#to print out the options that were selected (probably some way to use this to quickly assign args)
-		opts = vars(args)
-		options = { k : opts[k] for k in opts if opts[k] != None }
-		print(options)
-
-		if (args.n_cores is not None):
-			self.n_cores = args.n_cores
-			if (n_cores > 1):
-				self.do_parallel = True
-		if (self.n_cores < 1):
-			self.n_cores = 1
-			self.do_parallel = False 
-
-		if (args.n_bin is not None):
-			self.n_bin = args.n_bin
-
-		if (args.gal_file is not None):
-			self.GalaxyFile = args.gal_file
-			
-		if (args.output_file is not None):
-			self.ofile = args.output_file
-
-		if (args.n_band is not None):
-			self.n_band = args.n_band
-		if (args.n_base is not None):
-			self.n_base = args.n_base
-
-		self.do_plot = args.plots
-		self.verbose = args.verbose
-		self.doOpSim = args.opsim
-
-		#set the random seed
-		if (args.seed is not None):
-			np.random.seed(seed = args.seed)
-		else:
-			np.random.seed()
-
 
 
 

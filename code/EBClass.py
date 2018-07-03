@@ -224,9 +224,8 @@ class EBClass(object):
 		#uses RA/Dec (from galactic coordinates) to return locatiom's fieldID according to OpSim
 		#field-of-view == 3.5-degree diameter (also returned with fieldFov key)
 
-		cursor = self.db.cursor()
-		RA = self.LSSTcursor[:,1]
-		Dec = self.LSSTcursor[:,2]
+		RA = self.LSSTcursor[:,1].astype(float)
+		Dec = self.LSSTcursor[:,2].astype(float)
 		dbCoord = SkyCoord(ra = RA*units.degree, dec = Dec*units.degree, frame='icrs')
 		inCoord = SkyCoord(ra = myRA*units.degree, dec = myDEC*units.degree, frame='icrs')
 
