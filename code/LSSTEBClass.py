@@ -196,7 +196,7 @@ class LSSTEBClass(object):
 
 
 		#not sure if I need to do this...
-		self.return_dict[j] = EB
+		#self.return_dict[j] = EB
 
 
 
@@ -227,13 +227,14 @@ class LSSTEBClass(object):
 		#for observations
 		EB.filters = self.filters
 		EB.doOpSim = self.doOpSim
-		EB.summaryCursor = self.summaryCursor
-		EB.fieldCursor = self.fieldCursor
 		EB.years = self.years
 		EB.totaltime = self.totaltime 
 		EB.cadence= self.cadence 
 		EB.Nfilters = len(self.filters)
 		EB.verbose = self.verbose
+		if (self.doOpSim):
+			EB.summaryCursor = self.summaryCursor
+			EB.fieldCursor = self.fieldCursor
 		EB.initialize()
 
 		#some counters for how many EBs we could potentially observe with LSST

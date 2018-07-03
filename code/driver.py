@@ -33,9 +33,9 @@ def apply_args(worker):
 
 	if (args.n_cores is not None):
 		worker.n_cores = args.n_cores
-		if (n_cores > 1):
-			worker.do_parallel = True
-	if (worker.n_cores < 1):
+	if (worker.n_cores > 1):
+		worker.do_parallel = True
+	else:
 		worker.n_cores = 1
 		worker.do_parallel = False 
 
