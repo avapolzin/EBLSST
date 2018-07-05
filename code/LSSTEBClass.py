@@ -166,7 +166,7 @@ class LSSTEBClass(object):
 
 				#run gatspy for this filter
 				drng = max(EB.obsDates[filt]) - min(EB.obsDates[filt])
-				if (self.useFast):
+				if (self.useFast and len(EB.obsDates[filt]) > 50):
 					model = LombScargleFast(fit_period = True)
 				else:
 					model = LombScargle(fit_period = True)
@@ -191,7 +191,7 @@ class LSSTEBClass(object):
 
 		if (len(allObsDates) > 0 and self.doLSM): 
 			drng = max(allObsDates) - min(allObsDates)
-			if (self.useFast):
+			if (self.useFast and len(allObsDates) > 50):
 				model = LombScargleMultibandFast(fit_period = True)
 			else:
 				model = LombScargleMultiband(Nterms_band=self.n_band, Nterms_base=self.n_base, fit_period = True)
