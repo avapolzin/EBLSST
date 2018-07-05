@@ -76,73 +76,76 @@ if __name__ == "__main__":
 	sendbuf = None
 	root = 0
 
-	n_bin = 100000 #this is hard coded for now..
+	n_binr = 10000 #this is hard coded for now..
+	n_bins = n_binr * size
 	nfields = 15 #this is the number of fields returned from Katie's KDE
-	sendbuf = np.empty((n_bin, nfields), dtype='f')
+	sendbuf = np.empty((n_bins, nfields), dtype='float64')
+	#recvbuf = np.empty((n_binr, nfields), dtype='float64')
 
 	if (rank == 0):
+		#only do Katie's model once (though it's not a huge time sync...)
 		print("in rank 0")
-		#Our LSST EB class to use gatspy and ellc
-		worker = LSSTEBClass()
-		worker.initializeSeed() #right now this just sets the random seed
-		#worker.doLSM = False
 
 		#Katie's code to generate the binaries
 		g = BreivikGalaxyClass()
-		g.n_bin = n_bin
-
-		#check for command-line arguments
-		apply_args(worker)
+		g.n_bin = n_bins
 
 		#define the correct paths to the input files and db
-		worker.GalaxyFile ='/projects/p30137/ageller/EB-LSST/input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
-		worker.dbFile = '/projects/p30137/ageller/EB-LSST/db/minion_1016_sqlite.db' #for the OpSim database	
 		g.GalaxyFile ='/projects/p30137/ageller/EB-LSST/input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
 		g.GalaxyFileLogPrefix ='/projects/p30137/ageller/EB-LSST/input/fixedPopLogCm_'
 
 		#now get the binaries
 		gxDat = g.LSSTsim()
 
-		#get the summary cursor for OpSim, if necessary
-		if (worker.doOpSim):
-			print('Getting OpSim cursors...')
-			worker.getCursors()
-
-
-		#if we want logging
-		#logger = multiprocessing.log_to_stderr()
-		##logger.setLevel(logging.DEBUG)
-		#logger.setLevel(multiprocessing.SUBDEBUG)
-
-		#set up the output file
-		csvfile = open(worker.ofile, 'wt')	
-		worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-
-		#write header
-		worker.writeOutputLine(None, header=True)
-
 		print("sending to other processes")
 		sendbuf = gxDat
 
 
-	#in principle, I should scatter this, but I can't get that to work as expected...
-	#comm.Scatter(sendbuf,recvbuf, root) #This will scatter the entire thing, just like a broadcast
-	print("here")
+	#in principle, I should scatter this, but I can't get that to work ...
+	# comm.Scatter(sendbuf,recvbuf, root=root) 
+	# assert np.allclose(recvbuf, rank)
+	# print("here")
 	# print(rank, recvbuf.shape)
 	# print(recvbuf)
 
+	#So, let's just broadcast the entire thing.  It wastes memory, but I don't think this will be a big issue
 	gxDat = comm.bcast(sendbuf, root=root)
-	print(rank, gxDat.shape)
-	print(gxDat)
+	# print(rank, gxDat.shape)
+	# print(gxDat)
 
-	print("moving on...")
-	iuse = int(np.floor(n_bin/size))
+	iuse = int(np.floor(n_bins/size))
 	istart = int(iuse*rank)
 	istop = istart + iuse
-	print(iuse,istart,istop)
+	print(f'rank {rank} running through {istart} to {istop}')
 
 
-	for i in np.arange(istart, istop)
+	#Our LSST EB class to use gatspy and ellc
+	worker = LSSTEBClass()
+	#check for command-line arguments
+	apply_args(worker)	
+	if (worker.seed == None):
+		worker.seed = 1234
+	worker.seed += rank
+	worker.initializeSeed() #right now this just sets the random seed
+	#worker.doLSM = False
+
+	#get the summary cursor for OpSim, if necessary
+	if (worker.doOpSim):
+		worker.dbFile = '/projects/p30137/ageller/EB-LSST/db/minion_1016_sqlite.db' #for the OpSim database	
+		print('Getting OpSim cursors...')
+		worker.getCursors()
+
+
+	#set up the output file
+	worker.ofile = str(rank).zfill(3) + worker.ofile
+	csvfile = open(worker.ofile, 'wt')	
+	worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+	#write header
+	worker.writeOutputLine(None, header=True)
+
+	j = 0 #this is used with multiprocessing to keep track of the return_dict, but not needed here
+	# for i, line in enumerate(gxDat):
+	for i in np.arange(istart, istop):
 		print(rank, i)
 		line = gxDat[i]
 
@@ -153,47 +156,15 @@ if __name__ == "__main__":
 		if (EB.observable):
 			worker.return_dict[j] = EB
 			worker.run_ellc_gatspy(j)
-			jobs.append(p)
-			j += 1
-		else:
-			worker.writeOutputLine(EB)
+			EB = worker.return_dict[j]
+
+		print(rank, EB)
+		worker.writeOutputLine(EB)
+		csvfile.flush()
 
 
-		if (len(jobs) == worker.n_cores or (i >= worker.n_bin and len(jobs) > 0)):
-			#could print this to look at progress
-			# print ('n_appmag_failure = ',  worker.n_appmag_failure)
-			# print ('n_incl_failure = ', worker.n_incl_failure)
-			# print ('n_period_failure = ', worker.n_period_failure)
-			# print ('n_R_failure = ', worker.n_radius_failure)
-			# print ('n_totalrun = ', worker.n_totalrun)
-
-			#run the jobs
-			if (worker.do_parallel):
-				for k,job in enumerate(jobs):
-					print("starting job ",k)
-					x = job.start()
-				for k,job in enumerate(jobs):
-					print("joining job ",k)
-					job.join()
-			else:
-				for k,job in enumerate(jobs):
-					print("running job",k)
-					job.run()
-
-			#print the output
-			for j in range(worker.n_cores):
-				worker.writeOutputLine(worker.return_dict[j])
-				csvfile.flush()
-				if (worker.do_plot):
-					if (worker.return_dict[j]['LSM'] != -999):
-						 worker.make_gatspy_plots(j)
 
 
-			 #raise Exception('stopping')
-			jobs = []
-			j = 0
-
-
-	# csvfile.close()
+	csvfile.close()
 
 

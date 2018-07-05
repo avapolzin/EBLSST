@@ -49,7 +49,6 @@ class LSSTEBClass(object):
 		self.n_cores = 1
 
 		self.ofile = 'output_file.csv' #output file name
-		self.GalaxyFile ='../input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
 		self.dbFile = '../db/minion_1016_sqlite.db' #for the OpSim database
 		self.db = None
 		self.cursor = None
@@ -207,7 +206,7 @@ class LSSTEBClass(object):
 	def getEB(self, line, i):
 		EB = EBClass()
 
-		EB.seed = worker.seed + i
+		EB.seed = self.seed + i
 		EB.initializeSeed()
 
 		#solar units
