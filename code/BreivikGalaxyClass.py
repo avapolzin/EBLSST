@@ -60,8 +60,6 @@ class BreivikGalaxyClass(object):
 		########################################
 		np.random.seed()
 
-		self.initializeSeed()
-
 		# solar coordinates in the galaxy: in parsecs from 
 		# (Chaper 8 of Galactic Structure and stellar Pops book) Yoshii (2013)
 		############################################################################
