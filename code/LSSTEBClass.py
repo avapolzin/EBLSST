@@ -208,7 +208,9 @@ class LSSTEBClass(object):
 	def getEB(self, line, i):
 		EB = EBClass()
 
-
+		EB.seed = worker.seed + i
+		EB.initializeSeed()
+		
 		#solar units
 		EB.m1 = line[0]
 		EB.m2 = line[1]
@@ -264,7 +266,7 @@ class LSSTEBClass(object):
 			output.append(EB.LSM) 
 			self.csvwriter.writerow(output)	
 
-	def initialize(self):
+	def initializeSeed(self):
 		if (self.seed == None):
 			np.random.seed()
 		else:

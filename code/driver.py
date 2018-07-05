@@ -71,8 +71,8 @@ if __name__ == "__main__":
 
 	#Our LSST EB class to use gatspy and ellc
 	worker = LSSTEBClass()
-	worker.initialize() #right now this just sets the random seed
-	
+	worker.initializeSeed() #right now this just sets the random seed
+
 	#Katie's code to generate the binaries
 	g = BreivikGalaxyClass()
 

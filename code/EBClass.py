@@ -290,14 +290,18 @@ class EBClass(object):
 		if (self.radius_failed or self.period_failed or self.incl_failed or self.appmag_failed):
 			self.observable = False
 
-	def initialize(self):
-
+	def initializeSeed(self):
 		if (self.seed == None):
 			np.random.seed()
 		else:
 			np.random.seed(seed = self.seed)
 
-			
+	def initialize(self):
+
+		#should I initialize the seed here?  
+		#No I am initializing it in LSSTEBClass.py
+		#self.initializeSeed()
+
 		self.q = self.m2/self.m1
 		self.T1 = min(50000., max(3500., self.getTeff(self.L1, self.r1)))
 		self.T2 = min(50000., max(3500., self.getTeff(self.L2, self.r2)))

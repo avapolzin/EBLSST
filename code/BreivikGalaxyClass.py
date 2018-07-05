@@ -22,6 +22,16 @@ class BreivikGalaxyClass(object):
 		self.popID = '0012'
 		self.seed = None
 
+	def initializeSeed(self):
+		#I *think* it is OK not to do this here because I am initializing it in LSSTEBClass.py
+		# seed the random generator
+		########################################
+		if (self.seed == None):
+			np.random.seed()
+		else:
+			np.random.seed(seed = self.seed)
+
+
 	def GxSample(self, x, pop, sampleKernel, bw, nEcc, Tobs, output):
 		def untransform(dat, datSet):
 			datMin = min(datSet)
@@ -56,12 +66,7 @@ class BreivikGalaxyClass(object):
 		# mass: Msun, orbital period: days, Tobs: seconds     #
 		#######################################################
 		
-		# seed the random generator
-		########################################
-		if (self.seed == None):
-			np.random.seed()
-		else:
-			np.random.seed(seed = self.seed)
+
 
 		# solar coordinates in the galaxy: in parsecs from 
 		# (Chaper 8 of Galactic Structure and stellar Pops book) Yoshii (2013)
