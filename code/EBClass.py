@@ -350,7 +350,7 @@ class EBClass(object):
 			nobs = int(round(self.totaltime / (self.cadence * self.Nfilters)))
 			self.obsDates[filt] = np.sort(self.totaltime * np.random.random(size=nobs))
 
-		EB.nobs += len(self.obsDates[filt])
+		self.nobs += len(self.obsDates[filt])
 		#get the light curve, and related information
 		self.setLightCurve(filt)
 
