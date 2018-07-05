@@ -22,14 +22,6 @@ class BreivikGalaxyClass(object):
 		self.popID = '0012'
 		self.seed = None
 
-	def initializeSeed(self):
-		# seed the random generator
-		########################################
-		if (self.seed == None):
-			np.random.seed()
-		else:
-			np.random.seed(seed = self.seed)
-
 
 	def GxSample(self, x, pop, sampleKernel, bw, nEcc, Tobs, output):
 		def untransform(dat, datSet):
@@ -64,7 +56,10 @@ class BreivikGalaxyClass(object):
 		##### UNITS EXPECTED FOR POPULATION ###################
 		# mass: Msun, orbital period: days, Tobs: seconds     #
 		#######################################################
-		
+		# seed the random generator
+		########################################
+		np.random.seed()
+
 		self.initializeSeed()
 
 		# solar coordinates in the galaxy: in parsecs from 
