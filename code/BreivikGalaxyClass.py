@@ -23,7 +23,6 @@ class BreivikGalaxyClass(object):
 		self.seed = None
 
 	def initializeSeed(self):
-		#I *think* it is OK not to do this here because I am initializing it in LSSTEBClass.py
 		# seed the random generator
 		########################################
 		if (self.seed == None):
@@ -66,7 +65,7 @@ class BreivikGalaxyClass(object):
 		# mass: Msun, orbital period: days, Tobs: seconds     #
 		#######################################################
 		
-
+		self.initializeSeed()
 
 		# solar coordinates in the galaxy: in parsecs from 
 		# (Chaper 8 of Galactic Structure and stellar Pops book) Yoshii (2013)

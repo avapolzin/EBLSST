@@ -9,9 +9,11 @@ import numpy as np
 from mpi4py import MPI
 
 
-def define_args(parser):
+def define_args():
+	parser = argparse.ArgumentParser()
+
 	parser.add_argument("-n", "--n_cores", 		type=int, help="Number of cores [0]")
-	parser.add_argument("-c", "--n_bin", 		type=int, help="Number of binaries [100000]")
+	parser.add_argument("-c", "--n_bin", 		type=int, help="Number of binaries per process [100000]")
 	parser.add_argument("-i", "--gal_file", 	type=str, help="Galaxy input file name")
 	parser.add_argument("-o", "--output_file", 	type=str, help="output file name")
 	parser.add_argument("-a", "--n_band", 		type=int, help="Nterms_band input for gatspy [2]")
@@ -21,18 +23,16 @@ def define_args(parser):
 	parser.add_argument("-v", "--verbose", 		action='store_true', help="Set to show verbose output")
 	parser.add_argument("-l", "--opsim", 		action='store_true', help="set to run LSST OpSim, else run nobs =")
 
-
-def apply_args(worker):
-
-	parser = argparse.ArgumentParser()
-	define_args(parser)
-
 	#https://docs.python.org/2/howto/argparse.html
 	args = parser.parse_args()
 	#to print out the options that were selected (probably some way to use this to quickly assign args)
 	opts = vars(args)
 	options = { k : opts[k] for k in opts if opts[k] != None }
 	print(options)
+
+	return args
+
+def apply_args(worker, args):
 
 	if (args.n_cores is not None):
 		worker.n_cores = args.n_cores
@@ -76,13 +76,21 @@ if __name__ == "__main__":
 	sendbuf = None
 	root = 0
 
-	n_binr = 10000 #this is hard coded for now..
-	n_bins = n_binr * size
-	nfields = 15 #this is the number of fields returned from Katie's KDE
-	sendbuf = np.empty((n_bins, nfields), dtype='float64')
-	#recvbuf = np.empty((n_binr, nfields), dtype='float64')
+	args = define_args()
+	if (args.n_bin == None):
+		args.n_bin = 2
 
+	n_binr = args.n_bin
+	n_bins = n_binr*size
+	nfields = 15 #this is the number of fields returned from Katie's KDE
+	# sendbuf = np.empty((n_bins, nfields), dtype='float64')
+	# recvbuf = np.empty((n_binr, nfields), dtype='float64')
+	sendbuf = np.empty((size, n_binr*nfields), dtype='float64')
+	recvbuf = np.empty(n_binr*nfields, dtype='float64')
+
+	#only the rank 0 process will generate the galactic model
 	if (rank == 0):
+
 		#only do Katie's model once (though it's not a huge time sync...)
 		print("in rank 0")
 
@@ -98,73 +106,74 @@ if __name__ == "__main__":
 		gxDat = g.LSSTsim()
 
 		print("sending to other processes")
-		sendbuf = gxDat
-
+		sendbuf = np.reshape(gxDat, (size, n_binr*nfields))
+		print(gxDat)#[0], gxDat[-1])
+		print(sendbuf.shape, sendbuf[0], sendbuf[-1])
 
 	#in principle, I should scatter this, but I can't get that to work ...
-	# comm.Scatter(sendbuf,recvbuf, root=root) 
+	comm.Scatter(sendbuf,recvbuf, root=root) 
 	# assert np.allclose(recvbuf, rank)
-	# print("here")
-	# print(rank, recvbuf.shape)
-	# print(recvbuf)
+	print("here")
+	print(rank, recvbuf.shape, recvbuf[0], recvbuf[-1])
+	print(recvbuf)
 
-	#So, let's just broadcast the entire thing.  It wastes memory, but I don't think this will be a big issue
-	gxDat = comm.bcast(sendbuf, root=root)
-	# print(rank, gxDat.shape)
-	# print(gxDat)
+	# #So, let's just broadcast the entire thing.  It might waste memory, but I don't think this will be a big issue
+	# gxDat = comm.bcast(sendbuf, root=root)
+	# # print(rank, gxDat.shape)
+	# # print(gxDat)
 
-	iuse = int(np.floor(n_bins/size))
-	istart = int(iuse*rank)
-	istop = istart + iuse
-	print(f'rank {rank} running through {istart} to {istop}')
-
-
-	#Our LSST EB class to use gatspy and ellc
-	worker = LSSTEBClass()
-	#check for command-line arguments
-	apply_args(worker)	
-	if (worker.seed == None):
-		worker.seed = 1234
-	worker.seed += rank
-	worker.initializeSeed() #right now this just sets the random seed
-	#worker.doLSM = False
-
-	#get the summary cursor for OpSim, if necessary
-	if (worker.doOpSim):
-		worker.dbFile = '/projects/p30137/ageller/EB-LSST/db/minion_1016_sqlite.db' #for the OpSim database	
-		print('Getting OpSim cursors...')
-		worker.getCursors()
+	# iuse = int(np.floor(n_bins/size))
+	# istart = int(iuse*rank)
+	# istop = istart + iuse
+	# print(f'rank {rank} running through {istart} to {istop}')
 
 
-	#set up the output file
-	worker.ofile = str(rank).zfill(3) + worker.ofile
-	csvfile = open(worker.ofile, 'wt')	
-	worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-	#write header
-	worker.writeOutputLine(None, header=True)
+	# #Our LSST EB class to use gatspy and ellc
+	# worker = LSSTEBClass()
+	# #check for command-line arguments
+	# apply_args(worker, args)	
+	# if (worker.seed == None):
+	# 	worker.seed = 1234
+	# worker.seed += rank
+	# worker.initializeSeed() #right now this just sets the random seed
+	# #worker.doLSM = False
 
-	j = 0 #this is used with multiprocessing to keep track of the return_dict, but not needed here
-	# for i, line in enumerate(gxDat):
-	for i in np.arange(istart, istop):
-		print(rank, i)
-		line = gxDat[i]
-
-		#define the binary parameters
-		EB = worker.getEB(line, i)
-		EB.lineNum = i
-
-		if (EB.observable):
-			worker.return_dict[j] = EB
-			worker.run_ellc_gatspy(j)
-			EB = worker.return_dict[j]
-
-		print(rank, EB)
-		worker.writeOutputLine(EB)
-		csvfile.flush()
+	# #get the summary cursor for OpSim, if necessary
+	# if (worker.doOpSim):
+	# 	worker.dbFile = '/projects/p30137/ageller/EB-LSST/db/minion_1016_sqlite.db' #for the OpSim database	
+	# 	print('Getting OpSim cursors...')
+	# 	worker.getCursors()
 
 
+	# #set up the output file
+	# worker.ofile = str(rank).zfill(3) + worker.ofile
+	# csvfile = open(worker.ofile, 'wt')	
+	# worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+	# #write header
+	# worker.writeOutputLine(None, header=True)
+
+	# j = 0 #this is used with multiprocessing to keep track of the return_dict, but not needed here
+	# # for i, line in enumerate(gxDat):
+	# for i in np.arange(istart, istop):
+	# 	print(rank, i)
+	# 	line = gxDat[i]
+
+	# 	#define the binary parameters
+	# 	EB = worker.getEB(line, i)
+	# 	EB.lineNum = i
+
+	# 	if (EB.observable):
+	# 		worker.return_dict[j] = EB
+	# 		worker.run_ellc_gatspy(j)
+	# 		EB = worker.return_dict[j]
+
+	# 	print(rank, EB)
+	# 	worker.writeOutputLine(EB)
+	# 	csvfile.flush()
 
 
-	csvfile.close()
+
+
+	# csvfile.close()
 
 
