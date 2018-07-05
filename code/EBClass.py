@@ -77,6 +77,7 @@ class EBClass(object):
 		self.totaltime = 365.* self.years
 		self.cadence = 3.
 		self.Nfilters = 6.
+		self.nobs = 0
 		#this is for the magnitude uncertainties
 		self.sigmaDict = {
 			'u_': {
@@ -349,6 +350,7 @@ class EBClass(object):
 			nobs = int(round(self.totaltime / (self.cadence * self.Nfilters)))
 			self.obsDates[filt] = np.sort(self.totaltime * np.random.random(size=nobs))
 
+		EB.nobs += len(self.obsDates[filt])
 		#get the light curve, and related information
 		self.setLightCurve(filt)
 

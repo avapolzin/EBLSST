@@ -141,19 +141,18 @@ if __name__ == "__main__":
 
 	j = 0 #this is used with multiprocessing to keep track of the return_dict, but not needed here
 	for i, line in enumerate(gxDat):
-		print(rank, i)
 		line = gxDat[i]
 
 		#define the binary parameters
 		EB = worker.getEB(line, i)
 		EB.lineNum = i
+		print(rank, i, EB.period)
 
 		if (EB.observable):
 			worker.return_dict[j] = EB
 			worker.run_ellc_gatspy(j)
 			EB = worker.return_dict[j]
 
-		print(rank, EB.period)
 		worker.writeOutputLine(EB)
 		csvfile.flush()
 
