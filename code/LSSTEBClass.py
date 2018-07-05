@@ -19,7 +19,7 @@ import scipy.stats
 import ellc
 import gatspy
 from gatspy import datasets, periodic
-from gatspy.periodic import LombScargleMultiband, LombScargle, LombScargleFast#, LombScargleMultibandFast
+from gatspy.periodic import LombScargleMultiband, LombScargle, LombScargleFast, LombScargleMultibandFast
 
 #class that defines the eclipsing binaries
 from EBClass import EBClass
@@ -33,6 +33,7 @@ class LSSTEBClass(object):
 		self.verbose = False
 		self.doOpSim = False
 
+		self.useFast = True
 		self.doLSM = True
 		self.do_parallel = False 
 
@@ -165,8 +166,10 @@ class LSSTEBClass(object):
 
 				#run gatspy for this filter
 				drng = max(EB.obsDates[filt]) - min(EB.obsDates[filt])
-				model = LombScargle(fit_period = True)
-				#model = LombScargleFast(fit_period = True)
+				if (self.useFast):
+					model = LombScargleFast(fit_period = True)
+				else:
+					model = LombScargle(fit_period = True)
 				model.optimizer.period_range = (0.2, drng)
 				model.fit(EB.obsDates[filt], EB.appMagObs[filt], EB.appMagObsErr[filt])
 				EB.LSS[filt] = model.best_period
@@ -188,7 +191,10 @@ class LSSTEBClass(object):
 
 		if (len(allObsDates) > 0 and self.doLSM): 
 			drng = max(allObsDates) - min(allObsDates)
-			model = LombScargleMultiband(Nterms_band=self.n_band, Nterms_base=self.n_base, fit_period = True)
+			if (self.useFast):
+				model = LombScargleMultibandFast(fit_period = True)
+			else:
+				model = LombScargleMultiband(Nterms_band=self.n_band, Nterms_base=self.n_base, fit_period = True)
 			model.optimizer.period_range = (0.2, drng)
 			model.fit(allObsDates, allAppMagObs, allAppMagObsErr, allObsFilters)
 			EB.LSM = model.best_period
