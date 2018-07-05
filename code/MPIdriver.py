@@ -6,6 +6,7 @@ import multiprocessing, logging
 import csv
 import argparse
 import numpy as np
+from mpi4py import MPI
 
 
 def define_args(parser):
@@ -37,7 +38,7 @@ def apply_args(worker):
 		worker.n_cores = args.n_cores
 	if (worker.n_cores > 1):
 		worker.do_parallel = True
-	else:
+	else:	
 		worker.n_cores = 1
 		worker.do_parallel = False 
 
@@ -66,51 +67,84 @@ def apply_args(worker):
 
 
 
-
 if __name__ == "__main__":
 
-	manager = multiprocessing.Manager()
-	#Our LSST EB class to use gatspy and ellc
-	worker = LSSTEBClass()
-	worker.initializeSeed() #right now this just sets the random seed
-	worker.return_dict = manager.dict()
+	comm = MPI.COMM_WORLD
+	size = comm.Get_size()
+	rank = comm.Get_rank()
 
-	#Katie's code to generate the binaries
-	g = BreivikGalaxyClass()
+	sendbuf = None
+	root = 0
 
-	#check for command-line arguments
-	apply_args(worker)
+	n_bin = 100000 #this is hard coded for now..
+	nfields = 15 #this is the number of fields returned from Katie's KDE
+	sendbuf = np.empty((n_bin, nfields), dtype='f')
 
-	#define the correct paths to the input files and db
-	worker.GalaxyFile ='../input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
-	worker.dbFile = '../db/minion_1016_sqlite.db' #for the OpSim database	
-	g.GalaxyFile ='../input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
-	g.GalaxyFileLogPrefix ='../input/fixedPopLogCm_'
+	if (rank == 0):
+		print("in rank 0")
+		#Our LSST EB class to use gatspy and ellc
+		worker = LSSTEBClass()
+		worker.initializeSeed() #right now this just sets the random seed
+		#worker.doLSM = False
 
-	#now get the binaries
-	gxDat = g.LSSTsim()
+		#Katie's code to generate the binaries
+		g = BreivikGalaxyClass()
+		g.n_bin = n_bin
 
-	#get the summary cursor for OpSim, if necessary
-	if (worker.doOpSim):
-		print('Getting OpSim cursors...')
-		worker.getCursors()
+		#check for command-line arguments
+		apply_args(worker)
+
+		#define the correct paths to the input files and db
+		worker.GalaxyFile ='/projects/p30137/ageller/EB-LSST/input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
+		worker.dbFile = '/projects/p30137/ageller/EB-LSST/db/minion_1016_sqlite.db' #for the OpSim database	
+		g.GalaxyFile ='/projects/p30137/ageller/EB-LSST/input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
+		g.GalaxyFileLogPrefix ='/projects/p30137/ageller/EB-LSST/input/fixedPopLogCm_'
+
+		#now get the binaries
+		gxDat = g.LSSTsim()
+
+		#get the summary cursor for OpSim, if necessary
+		if (worker.doOpSim):
+			print('Getting OpSim cursors...')
+			worker.getCursors()
 
 
-	#if we want logging
-	#logger = multiprocessing.log_to_stderr()
-	##logger.setLevel(logging.DEBUG)
-	#logger.setLevel(multiprocessing.SUBDEBUG)
+		#if we want logging
+		#logger = multiprocessing.log_to_stderr()
+		##logger.setLevel(logging.DEBUG)
+		#logger.setLevel(multiprocessing.SUBDEBUG)
 
-	#set up the output file
-	csvfile = open(worker.ofile, 'wt')	
-	worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+		#set up the output file
+		csvfile = open(worker.ofile, 'wt')	
+		worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-	#write header
-	worker.writeOutputLine(None, header=True)
+		#write header
+		worker.writeOutputLine(None, header=True)
 
-	jobs = []
-	j = 0
-	for i, line in enumerate(gxDat):
+		print("sending to other processes")
+		sendbuf = gxDat
+
+
+	#in principle, I should scatter this, but I can't get that to work as expected...
+	#comm.Scatter(sendbuf,recvbuf, root) #This will scatter the entire thing, just like a broadcast
+	print("here")
+	# print(rank, recvbuf.shape)
+	# print(recvbuf)
+
+	gxDat = comm.bcast(sendbuf, root=root)
+	print(rank, gxDat.shape)
+	print(gxDat)
+
+	print("moving on...")
+	iuse = int(np.floor(n_bin/size))
+	istart = int(iuse*rank)
+	istop = istart + iuse
+	print(iuse,istart,istop)
+
+
+	for i in np.arange(istart, istop)
+		print(rank, i)
+		line = gxDat[i]
 
 		#define the binary parameters
 		EB = worker.getEB(line, i)
@@ -118,7 +152,7 @@ if __name__ == "__main__":
 
 		if (EB.observable):
 			worker.return_dict[j] = EB
-			p = multiprocessing.Process(target=worker.run_ellc_gatspy, args=(j,))
+			worker.run_ellc_gatspy(j)
 			jobs.append(p)
 			j += 1
 		else:
@@ -160,6 +194,6 @@ if __name__ == "__main__":
 			j = 0
 
 
-	csvfile.close()
+	# csvfile.close()
 
 

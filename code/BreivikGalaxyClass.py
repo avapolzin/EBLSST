@@ -18,7 +18,7 @@ class BreivikGalaxyClass(object):
 		self.GalaxyFileLogPrefix ='../input/fixedPopLogCm_'
 
 		self.n_bin = 100000
-		self.n_cores = 1
+		self.n_cores = 4
 		self.popID = '0012'
 		self.seed = None
 

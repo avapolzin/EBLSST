@@ -54,9 +54,8 @@ class LSSTEBClass(object):
 		self.db = None
 		self.cursor = None
 
-		#dictionaries handled by the multiprocessing manager
-		self.manager = multiprocessing.Manager()
-		self.return_dict = self.manager.dict()
+		#dictionaries -- could be handled by the multiprocessing manager, redefined in driver
+		self.return_dict = dict()
 
 		self.csvwriter = None #will hold the csvwriter object
 
@@ -210,7 +209,7 @@ class LSSTEBClass(object):
 
 		EB.seed = worker.seed + i
 		EB.initializeSeed()
-		
+
 		#solar units
 		EB.m1 = line[0]
 		EB.m2 = line[1]
