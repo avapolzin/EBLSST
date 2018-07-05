@@ -105,75 +105,61 @@ if __name__ == "__main__":
 		#now get the binaries
 		gxDat = g.LSSTsim()
 
-		print("sending to other processes")
+		print("reshaping to send to other processes")
 		sendbuf = np.reshape(gxDat, (size, n_binr*nfields))
-		print(gxDat)#[0], gxDat[-1])
-		print(sendbuf.shape, sendbuf[0], sendbuf[-1])
 
-	#in principle, I should scatter this, but I can't get that to work ...
+
+	#scatter to the all of the processes
 	comm.Scatter(sendbuf,recvbuf, root=root) 
-	# assert np.allclose(recvbuf, rank)
-	print("here")
-	print(rank, recvbuf.shape, recvbuf[0], recvbuf[-1])
-	print(recvbuf)
-
-	# #So, let's just broadcast the entire thing.  It might waste memory, but I don't think this will be a big issue
-	# gxDat = comm.bcast(sendbuf, root=root)
-	# # print(rank, gxDat.shape)
-	# # print(gxDat)
-
-	# iuse = int(np.floor(n_bins/size))
-	# istart = int(iuse*rank)
-	# istop = istart + iuse
-	# print(f'rank {rank} running through {istart} to {istop}')
+	#now reshape again to get back to the right format
+	gxDat = np.reshape(recvbuf, (n_binr, nfields))
 
 
-	# #Our LSST EB class to use gatspy and ellc
-	# worker = LSSTEBClass()
-	# #check for command-line arguments
-	# apply_args(worker, args)	
-	# if (worker.seed == None):
-	# 	worker.seed = 1234
-	# worker.seed += rank
-	# worker.initializeSeed() #right now this just sets the random seed
-	# #worker.doLSM = False
+	#Our LSST EB class to use gatspy and ellc
+	worker = LSSTEBClass()
+	#check for command-line arguments
+	apply_args(worker, args)	
+	if (worker.seed == None):
+		worker.seed = 1234
+	worker.seed += rank
+	worker.initializeSeed() #right now this just sets the random seed
+	#worker.doLSM = False
 
-	# #get the summary cursor for OpSim, if necessary
-	# if (worker.doOpSim):
-	# 	worker.dbFile = '/projects/p30137/ageller/EB-LSST/db/minion_1016_sqlite.db' #for the OpSim database	
-	# 	print('Getting OpSim cursors...')
-	# 	worker.getCursors()
+	#get the summary cursor for OpSim, if necessary
+	if (worker.doOpSim):
+		worker.dbFile = '/projects/p30137/ageller/EB-LSST/db/minion_1016_sqlite.db' #for the OpSim database	
+		print('Getting OpSim cursors...')
+		worker.getCursors()
 
 
-	# #set up the output file
-	# worker.ofile = str(rank).zfill(3) + worker.ofile
-	# csvfile = open(worker.ofile, 'wt')	
-	# worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-	# #write header
-	# worker.writeOutputLine(None, header=True)
+	#set up the output file
+	worker.ofile = 'output_files/'+str(rank).zfill(3) + worker.ofile
+	csvfile = open(worker.ofile, 'wt')	
+	worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+	#write header
+	worker.writeOutputLine(None, header=True)
 
-	# j = 0 #this is used with multiprocessing to keep track of the return_dict, but not needed here
-	# # for i, line in enumerate(gxDat):
-	# for i in np.arange(istart, istop):
-	# 	print(rank, i)
-	# 	line = gxDat[i]
+	j = 0 #this is used with multiprocessing to keep track of the return_dict, but not needed here
+	for i, line in enumerate(gxDat):
+		print(rank, i)
+		line = gxDat[i]
 
-	# 	#define the binary parameters
-	# 	EB = worker.getEB(line, i)
-	# 	EB.lineNum = i
+		#define the binary parameters
+		EB = worker.getEB(line, i)
+		EB.lineNum = i
 
-	# 	if (EB.observable):
-	# 		worker.return_dict[j] = EB
-	# 		worker.run_ellc_gatspy(j)
-	# 		EB = worker.return_dict[j]
+		if (EB.observable):
+			worker.return_dict[j] = EB
+			worker.run_ellc_gatspy(j)
+			EB = worker.return_dict[j]
 
-	# 	print(rank, EB)
-	# 	worker.writeOutputLine(EB)
-	# 	csvfile.flush()
+		print(rank, EB.period)
+		worker.writeOutputLine(EB)
+		csvfile.flush()
 
 
 
 
-	# csvfile.close()
+	csvfile.close()
 
 

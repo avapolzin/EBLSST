@@ -165,8 +165,8 @@ class LSSTEBClass(object):
 
 				#run gatspy for this filter
 				drng = max(EB.obsDates[filt]) - min(EB.obsDates[filt])
-				#model = LombScargle(fit_period = True)
-				model = LombScargleFast(fit_period = True)
+				model = LombScargle(fit_period = True)
+				#model = LombScargleFast(fit_period = True)
 				model.optimizer.period_range = (0.2, drng)
 				model.fit(EB.obsDates[filt], EB.appMagObs[filt], EB.appMagObsErr[filt])
 				EB.LSS[filt] = model.best_period
