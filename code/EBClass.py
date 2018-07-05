@@ -125,6 +125,8 @@ class EBClass(object):
 		self.LSM = -999.
 		self.LSMmodel = None
 
+		self.seed = None
+
 	#Some approximate function for deriving stellar parameters
 	def getRad(self, m):
 		#(not needed with Katie's model, but included here in case needed later)
@@ -289,6 +291,13 @@ class EBClass(object):
 			self.observable = False
 
 	def initialize(self):
+
+		if (self.seed == None):
+			np.random.seed()
+		else:
+			np.random.seed(seed = self.seed)
+
+			
 		self.q = self.m2/self.m1
 		self.T1 = min(50000., max(3500., self.getTeff(self.L1, self.r1)))
 		self.T2 = min(50000., max(3500., self.getTeff(self.L2, self.r2)))

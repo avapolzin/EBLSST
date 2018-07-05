@@ -20,7 +20,7 @@ class BreivikGalaxyClass(object):
 		self.n_bin = 100000
 		self.n_cores = 1
 		self.popID = '0012'
-
+		self.seed = None
 
 	def GxSample(self, x, pop, sampleKernel, bw, nEcc, Tobs, output):
 		def untransform(dat, datSet):
@@ -58,8 +58,11 @@ class BreivikGalaxyClass(object):
 		
 		# seed the random generator
 		########################################
-		np.random.seed()
-		
+		if (self.seed == None):
+			np.random.seed()
+		else:
+			np.random.seed(seed = self.seed)
+
 		# solar coordinates in the galaxy: in parsecs from 
 		# (Chaper 8 of Galactic Structure and stellar Pops book) Yoshii (2013)
 		############################################################################

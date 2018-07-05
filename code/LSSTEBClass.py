@@ -68,6 +68,7 @@ class LSSTEBClass(object):
 		self.n_radius_failed = 0
 
 
+		self.seed = None
 
 	#database manipulation
 	def getCursors(self):
@@ -263,3 +264,8 @@ class LSSTEBClass(object):
 			output.append(EB.LSM) 
 			self.csvwriter.writerow(output)	
 
+	def initialize(self):
+		if (self.seed == None):
+			np.random.seed()
+		else:
+			np.random.seed(seed = self.seed)

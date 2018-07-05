@@ -1,3 +1,5 @@
+#!/software/anaconda3.6/bin/python
+
 from LSSTEBClass import LSSTEBClass
 from BreivikGalaxyClass import BreivikGalaxyClass
 import multiprocessing, logging
@@ -7,15 +9,15 @@ import numpy as np
 
 
 def define_args(parser):
-	parser.add_argument("-n", "--n_cores", 	type=int, help="Number of cores [0]")
+	parser.add_argument("-n", "--n_cores", 		type=int, help="Number of cores [0]")
 	parser.add_argument("-c", "--n_bin", 		type=int, help="Number of binaries [100000]")
 	parser.add_argument("-i", "--gal_file", 	type=str, help="Galaxy input file name")
-	parser.add_argument("-o", "--output_file", type=str, help="output file name")
+	parser.add_argument("-o", "--output_file", 	type=str, help="output file name")
 	parser.add_argument("-a", "--n_band", 		type=int, help="Nterms_band input for gatspy [2]")
 	parser.add_argument("-b", "--n_base", 		type=int, help="Nterms_base input for gatspy [2]")
 	parser.add_argument("-s", "--seed", 		type=int, help="random seed []")
 	parser.add_argument("-p", "--plots", 		action='store_true', help="Set to create plots")
-	parser.add_argument("-v", "--verbose", 	action='store_true', help="Set to show verbose output")
+	parser.add_argument("-v", "--verbose", 		action='store_true', help="Set to show verbose output")
 	parser.add_argument("-l", "--opsim", 		action='store_true', help="set to run LSST OpSim, else run nobs =")
 
 
@@ -59,9 +61,7 @@ def apply_args(worker):
 
 	#set the random seed
 	if (args.seed is not None):
-		np.random.seed(seed = args.seed)
-	else:
-		np.random.seed()
+		worker.seed = args.seed
 
 
 
@@ -71,7 +71,8 @@ if __name__ == "__main__":
 
 	#Our LSST EB class to use gatspy and ellc
 	worker = LSSTEBClass()
-
+	worker.initialize() #right now this just sets the random seed
+	
 	#Katie's code to generate the binaries
 	g = BreivikGalaxyClass()
 
