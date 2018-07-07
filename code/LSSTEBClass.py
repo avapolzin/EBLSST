@@ -212,7 +212,7 @@ class LSSTEBClass(object):
 	def getEB(self, line, i):
 		EB = EBClass()
 
-		EB.seed = self.seed + i
+		# EB.seed = self.seed + i
 		EB.initializeSeed()
 
 		#solar units
