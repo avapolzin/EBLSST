@@ -23,6 +23,7 @@ from gatspy.periodic import LombScargleMultiband, LombScargle, LombScargleFast, 
 
 #class that defines the eclipsing binaries
 from EBClass import EBClass
+from SEDClass import SEDClass
 
 class LSSTEBClass(object):
 
@@ -68,6 +69,8 @@ class LSSTEBClass(object):
 
 
 		self.seed = None
+
+		self.SED = None
 
 	#database manipulation
 	def getCursors(self):
@@ -262,7 +265,7 @@ class LSSTEBClass(object):
 			self.csvwriter.writerow(['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'RA', 'Dec', 'd', 'nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD'])
 
 		else:
-			output = [EB.period, EB.m1, EB.m2, EB.r1, EB.r2, EB.eccentricity, EB.inclination, EB.RA, EB.Dec, EB.dist, EB.nobs, EB.appMagMean, EB.maxDeltaMag, EB.appmag_failed, EB.incl_failed, EB.period_failed, EB.radius_failed]
+			output = [EB.period, EB.m1, EB.m2, EB.r1, EB.r2, EB.eccentricity, EB.inclination, EB.RA, EB.Dec, EB.dist, EB.nobs, EB.appMagMeanAll, EB.maxDeltaMag, EB.appmag_failed, EB.incl_failed, EB.period_failed, EB.radius_failed]
 
 			#this is for gatspt
 			for filt in self.filters:
@@ -270,8 +273,11 @@ class LSSTEBClass(object):
 			output.append(EB.LSM) 
 			self.csvwriter.writerow(output)	
 
-	def initializeSeed(self):
+	def initialize(self):
 		if (self.seed == None):
 			np.random.seed()
 		else:
 			np.random.seed(seed = self.seed)
+
+		self.SED = SEDClass()
+		self.SED.readFilters()

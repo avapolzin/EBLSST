@@ -122,7 +122,7 @@ if __name__ == "__main__":
 	if (worker.seed == None):
 		worker.seed = 1234
 	worker.seed += rank
-	worker.initializeSeed() #right now this just sets the random seed
+	worker.initialize() #sets the random seed and reads in the filter files
 	#worker.doLSM = False
 
 	#get the summary cursor for OpSim, if necessary

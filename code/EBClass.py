@@ -1,10 +1,23 @@
+##Have Adam double check the conversion from bolometric to apparent magnitude
+
 import numpy as np
 from astropy import units, constants
 from astropy.coordinates import SkyCoord, ICRS
 import ellc
 
+#only using a small portion of vespa, to get the A_V value
+import vespa
+#extinction will allow me to convert A_V to any wavelength.  Not sure which reference is best.  I will use ccm89, for now. 
+#import extinction
+#could use this instead, seems to be linked more closely to astropy : https://dust-extinction.readthedocs.io/en/latest/index.html
+#pip install git+https://github.com/karllark/dust_extinction.git
+from dust_extinction.parameter_averages import F99
+
+
 class EBClass(object):
 	def __init__(self, *args,**kwargs):
+
+		self.MbolSun = 4.73 #as "recommended" for Flower's bolometric correction in http://iopscience.iop.org/article/10.1088/0004-6256/140/5/1158/pdf
 
 		#these is defined by the user
 		self.m1 = None #*units.solMass
@@ -24,12 +37,25 @@ class EBClass(object):
 		self.zGx = None #*units.parsec
 		self.lineNum = 0
 		self.verbose = False
+		self.RV = 3.1
+
+		#from https://www.lsst.org/scientists/keynumbers
+		#in nm
+		self.wavelength = {
+			'u_': (324. + 395.)/2.,
+			'g_': (405. + 552.)/2.,
+			'r_': (552. + 691.)/2.,
+			'i_': (691. + 818.)/2.,
+			'z_': (818. + 921.)/2.,
+			'y_': (922. + 997. )/2.
+		}
 
 		#these will be calculated after calling self.initialize()
 		self.RL1 = None
 		self.RL2 = None
 		self.T1 = None
 		self.T2 = None
+		self.T12 = None
 		self.L1 = None
 		self.L2 = None
 		self.g1 = None
@@ -43,10 +69,13 @@ class EBClass(object):
 		self.sbratio = None
 		self.RA = None
 		self.Dec = None
-		self.appMagMean = None
-		self.absMagMean = None
 		self.Mbol = None
-
+		self.AV = None
+		self.appMagMean = dict()
+		self.appMagMeanAll = None
+		self.absMagMean = dict()
+		self.Ared = dict()
+		self.BC = dict()
 
 		#for light curves
 		self.filters = None
@@ -127,6 +156,43 @@ class EBClass(object):
 		self.LSMmodel = None
 
 		self.seed = None
+
+
+
+
+	def getFlowerBCV(self, Teff):
+		#from http://iopscience.iop.org/article/10.1088/0004-6256/140/5/1158/pdf
+		#which updates/corrects from Flower, P. J. 1996, ApJ, 469, 355
+		lt = np.log10(Teff)
+		a = 0.
+		b = 0.
+		c = 0.
+		d = 0.
+		e = 0.
+		f = 0.
+		if (lt < 3.7):
+			a = −0.190537291496456*10.**5.
+			b =  0.155144866764412*10.**5.
+			c = −0.421278819301717*10.**4.
+			d =  0.381476328422343*10.**3.
+		if (lt >= 3.7 and lt < 3.9):
+			a = −0.370510203809015*10.**5.
+			b =  0.385672629965804*10.**5.
+			c = −0.150651486316025*10.**5.
+			d =  0.261724637119416*10.**4.
+			e = −0.170623810323864*10.**3.
+		if (lt >= 3.9):
+			a = −0.118115450538963*10.**6.
+			b =  0.137145973583929*10.**6.
+			c = −0.636233812100225*10.**5.
+			d =  0.147412923562646*10.**5.
+			e = −0.170587278406872*10.**4.
+			f =  0.788731721804990*10.**2.
+
+
+		BCV = a + b*lt + c*lt**2. + d*lt**3. + e*lt**4 + f*lt**5.
+
+		return BCV
 
 	#Some approximate function for deriving stellar parameters
 	def getRad(self, m):
@@ -214,7 +280,7 @@ class EBClass(object):
 		if (min(lc) > 0):
 
 			magn = -2.5*np.log10(lc)
-			self.appMag[filt] = self.appMagMean + magn   
+			self.appMag[filt] = self.appMagMean[filt] + magn   
 			#Ivezic 2008, https://arxiv.org/pdf/0805.2366.pdf , Table 2
 			sigma2_rand = getSig2Rand(filt, self.appMag[filt])   #random photometric error
 			self.appMagObsErr[filt] = ((self.sigma_sys**2.) + (sigma2_rand))**(1./2.)
@@ -274,7 +340,7 @@ class EBClass(object):
 
 	def checkIfObservable(self):
 
-		if (self.appMagMean <= 11. or self.appMagMean>= 24.):
+		if (self.appMagMeanAll <= 11. or self.appMagMeanAll >= 24.):
 			self.appmag_failed = 1
 		
 		incl = self.inclination * 180/np.pi
@@ -317,21 +383,41 @@ class EBClass(object):
 		self.R_1e = self.r1/self.Eggleton_RL(self.m1/self.m2, self.a * (1. - self.eccentricity))
 		self.R_2e = self.r2/self.Eggleton_RL(self.m2/self.m1, self.a * (1. - self.eccentricity))
 
+		#estimate a combined Teff value, as I do in the N-body codes (but where does this comes from?)
+		logLb = np.log10(self.L1 + self.L2)
+		logRb = 0.5*np.log10(self.r1**2. + self.r2**2.)
+		self.T12 = 10.**(3.762 + 0.25*logLb - 0.5*logRb)
+		#print(self.L1, self.L2, self.T1, self.T2, self.T12)
+
 		coord = SkyCoord(x=self.xGx, y=self.yGx, z=self.zGx, unit='pc', representation='cartesian', frame='galactocentric')
 		self.RA = coord.icrs.ra.to(units.deg).value
 		self.Dec = coord.icrs.dec.to(units.deg).value
 
-		MbolSun = 4.74
-		self.Mbol = MbolSun - 2.5*np.log10(self.L1 + self.L2)
+		#one option for getting the exinction
+		self.AV = vespa.stars.extinction.get_AV_infinity(self.RA, self.Dec, frame='icrs')
+		ext = F99(Rv=self.RV)
+		for f in self.filters:
+			#print(extinction.fitzpatrick99(np.array([self.wavelength[f]*10.]), self.AV, self.RV, unit='aa')[0] , ext(self.wavelength[f]*units.nm)*self.AV)
+			#self.Ared[f] = extinction.fitzpatrick99(np.array([self.wavelength[f]*10.]), self.AV, self.RV, unit='aa')[0] #or ccm89
+			self.Ared[f] = ext(self.wavelength[f]*units.nm)*self.AV
+
+		self.Mbol = self.MbolSun - 2.5*np.log10(self.L1 + self.L2)
 
 		######################
 		#Now I'm assuming that the magnitude is bolometric -- but we should account for redenning in each filter
 		#######################
-		self.absMagMean = self.Mbol
-		self.appMagMean = self.absMagMean + 5.*np.log10(self.dist*100.)  #multiplying by 1000 to get to parsec units
+		# self.absMagMean = self.Mbol
+		# self.appMagMean = self.absMagMean + 5.*np.log10(self.dist*100.)  #multiplying by 1000 to get to parsec units
 
+		self.appMagMeanAll = 0.
 		for f in self.filters:
+			#BCV = self.getFlowerBCV(self.T12)
+			self.SED.getBCf(self.T12*units.K) #now, how do I use this??
+			self.absMagMean[f] = self.Mbol# - self.BC[f]
+			self.appMagMean[f] = self.absMagMean[f] + 5.*np.log10(self.dist*100.) + self.Ared[f]  #multiplying by 1000 to get to parsec units
 			self.LSS[f] = -999.
+			self.appMagMeanAll += self.appMagMean[f]
+		self.appMagMeanAll /= len(self.filters)
 
 		#check if we can observe this (not accounting for the location in galaxy)
 		self.checkIfObservable()

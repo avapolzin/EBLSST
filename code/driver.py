@@ -72,7 +72,7 @@ if __name__ == "__main__":
 	manager = multiprocessing.Manager()
 	#Our LSST EB class to use gatspy and ellc
 	worker = LSSTEBClass()
-	worker.initializeSeed() #right now this just sets the random seed
+	worker.initialize() #sets the random seed and reads in the filter files
 	worker.return_dict = manager.dict()
 
 	#Katie's code to generate the binaries
@@ -114,6 +114,7 @@ if __name__ == "__main__":
 
 		#define the binary parameters
 		EB = worker.getEB(line, i)
+		print(EB.AV, EB.Ared)
 		EB.lineNum = i
 
 		if (EB.observable):
