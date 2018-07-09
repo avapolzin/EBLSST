@@ -1,7 +1,6 @@
 #!/software/anaconda3.6/bin/python
 
-from LSSTEBClass import LSSTEBClass
-from BreivikGalaxyClass import BreivikGalaxyClass
+from EBLSST import LSSTEBworker, BreivikGalaxy
 import multiprocessing, logging
 import csv
 import argparse
@@ -71,12 +70,12 @@ if __name__ == "__main__":
 
 	manager = multiprocessing.Manager()
 	#Our LSST EB class to use gatspy and ellc
-	worker = LSSTEBClass()
+	worker = LSSTEBworker()
 	worker.initialize() #sets the random seed and reads in the filter files
 	worker.return_dict = manager.dict()
 
 	#Katie's code to generate the binaries
-	g = BreivikGalaxyClass()
+	g = BreivikGalaxy()
 
 	#check for command-line arguments
 	apply_args(worker)

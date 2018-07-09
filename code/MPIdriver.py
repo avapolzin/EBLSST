@@ -1,7 +1,6 @@
 #!/software/anaconda3.6/bin/python
 
-from LSSTEBClass import LSSTEBClass
-from BreivikGalaxyClass import BreivikGalaxyClass
+from EBLSST import LSSTEBworker, BreivikGalaxy
 import multiprocessing, logging
 import csv
 import argparse
@@ -95,7 +94,7 @@ if __name__ == "__main__":
 		print("in rank 0")
 
 		#Katie's code to generate the binaries
-		g = BreivikGalaxyClass()
+		g = BreivikGalaxy()
 		g.n_bin = n_bins
 
 		#define the correct paths to the input files and db
@@ -116,7 +115,7 @@ if __name__ == "__main__":
 
 
 	#Our LSST EB class to use gatspy and ellc
-	worker = LSSTEBClass()
+	worker = LSSTEBworker()
 	#check for command-line arguments
 	apply_args(worker, args)	
 	if (worker.seed == None):
