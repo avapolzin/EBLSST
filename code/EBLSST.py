@@ -1,4 +1,5 @@
-##Have Adam double check the conversion from bolometric to apparent magnitude
+## Have Adam double check the conversion from bolometric to apparent magnitude
+## ellc.lc is in arbitrary flux units... How do we get this into real units??
 
 import math
 import scipy.special as ss
@@ -12,7 +13,7 @@ import time
 import pandas as pd
 import csv
 import matplotlib
-matplotlib.use('agg')
+#matplotlib.use('agg')
 import matplotlib.pyplot as plt
 #OpSim (in OpSimRun1) - http://ops2.lsst.org/docs/current/architecture.html
 import sqlite3
@@ -297,15 +298,31 @@ class EclipsingBinary(object):
 		ldc_2 = [a1_2, a2_2, a3_2, a4_2]
 
 		#light curve
+		print(self.t_zero, self.period, self.a, self.q,
+			self.R_1, self.R_2, self.inclination, self.sbratio)
+		#This is in arbitrary units... H ow do we get this into real units??
 		lc = ellc.lc(self.obsDates[filt], ldc_1=ldc_1, ldc_2=ldc_2, 
 			t_zero=self.t_zero, period=self.period, a=self.a, q=self.q,
 			f_c=self.f_c, f_s=self.f_s, ld_1=self.ld_1,  ld_2=self.ld_2,
 			radius_1=self.R_1, radius_2=self.R_2, incl=self.inclination, sbratio=self.sbratio, 
 			shape_1=self.shape_1, shape_2=self.shape_2, grid_1=self.grid_1,grid_2=self.grid_2) 
-		if (min(lc) > 0):
+		lc = lc/np.median(lc)
 
+		if (min(lc) > 0):
 			magn = -2.5*np.log10(lc)
 			self.appMag[filt] = self.appMagMean[filt] + magn   
+
+			plt.plot((self.obsDates[filt] % self.period), lc,'.')
+			plt.ylim(min(lc), max(lc))
+			plt.show()
+			plt.plot((self.obsDates[filt] % self.period), magn,'.')
+			plt.ylim(max(magn), min(magn))
+			plt.show()
+			plt.plot((self.obsDates[filt] % self.period), self.appMag[filt],'.')
+			plt.ylim(max(self.appMag[filt]), min(self.appMag[filt]))
+			plt.show()
+			raise
+
 			#Ivezic 2008, https://arxiv.org/pdf/0805.2366.pdf , Table 2
 			sigma2_rand = getSig2Rand(filt, self.appMag[filt])   #random photometric error
 			self.appMagObsErr[filt] = ((self.sigma_sys**2.) + (sigma2_rand))**(1./2.)
@@ -368,12 +385,11 @@ class EclipsingBinary(object):
 		if (self.appMagMeanAll <= 11. or self.appMagMeanAll >= 24.):
 			self.appmag_failed = 1
 		
-		incl = self.inclination * 180/np.pi
 		min_incl = 90. - np.arctan2(self.r1 + self.r2, 2.*self.a)*180./np.pi
-		if (incl <= min_incl):
+		if (self.inclination <= min_incl):
 			self.incl_failed = 1
 		
-		if (self.period >= 2. * self.totaltime):
+		if (self.period >= self.totaltime):
 			self.period_failed = 1
 				
 		if (self.R_1 <= 0 or self.R_1 >=1 or self.R_2 <=0 or self.R_2 >= 1 or self.R_1e >=1 or self.R_2e >=1):
@@ -428,17 +444,15 @@ class EclipsingBinary(object):
 
 		self.Mbol = self.MbolSun - 2.5*np.log10(self.L1 + self.L2)
 
-		######################
-		#Now I'm assuming that the magnitude is bolometric -- but we should account for redenning in each filter
-		#######################
-		# self.absMagMean = self.Mbol
-		# self.appMagMean = self.absMagMean + 5.*np.log10(self.dist*100.)  #multiplying by 1000 to get to parsec units
-
+		#account for reddening and the different filter throughput functions (currently related to a blackbody)
 		self.appMagMeanAll = 0.
 		for f in self.filters:
 			#BCV = self.getFlowerBCV(self.T12)
-			self.SED.getBCf(self.T12*units.K) #now, how do I use this??
-			self.absMagMean[f] = self.Mbol# - self.BC[f]
+			BCf1 = self.SED.getBCf(self.T1*units.K, f)
+			BCf2 = self.SED.getBCf(self.T2*units.K, f)
+			L1f = self.L1 * BCf1
+			L2f = self.L2 * BCf2
+			self.absMagMean[f] = self.MbolSun - 2.5*np.log10(L1f + L2f) #This may not be strictly correct?  Should I be using the Sun's magnitude in the given filter? But maybe this is OK because, L1f and L2f are in units of LSun, which is related to the bolometric luminosity?
 			self.appMagMean[f] = self.absMagMean[f] + 5.*np.log10(self.dist*100.) + self.Ared[f]  #multiplying by 1000 to get to parsec units
 			self.LSS[f] = -999.
 			self.appMagMeanAll += self.appMagMean[f]
@@ -827,24 +841,41 @@ class SED(object):
 			df = pd.read_csv(fname, delim_whitespace=True, header=None, names=['w','t'], skiprows = 6)
 			self.filterThroughput[f] = {'w':df['w'].values*units.nm, 't':df['t'].values}
 
-	def getBCf(self, T, dw = 0.1, wmin =10, wmax = 10000):
+	def blackbody(self, w, T):
+		#erg/s/cm^2/AA/steradian
+		Bl = 2.*constants.h*constants.c**2./w**5. / (np.exp( constants.h*constants.c / (w*constants.k_B*T)) -1.)
+		return Bl.decompose()
+
+	def getBCf(self, T, filt, dw = 0.1, wmin =10, wmax = 10000):
 
 		#could improve this with a Kurucz model
-		def blackbody(w, T):
-			#erg/s/cm^2/AA/steradian
-			Bl = 2.*constants.h*constants.c**2./w**5. / (np.exp( constants.h*constants.c / (w*constants.k_B*T)) -1.)
-			return Bl.decompose()
 
 		w = np.arange(wmin, wmax, dw)*units.nm
-		f = blackbody(w,T).value
+		f = self.blackbody(w,T).value
 		#norm = np.sum(f)*dw
 		norm = max(f)
 		fn = f/norm
-		
 		ftot = np.sum(fn)
 
-		for f in self.filters:
-			ft = np.interp(w, self.filterThroughput[f]['w'], self.filterThroughput[f]['t'])
+		ft = np.interp(w, self.filterThroughput[filt]['w'], self.filterThroughput[filt]['t'])
+		# plt.plot(w,ft,'--')
+		tot = np.sum(fn*ft)
+
+		return tot/ftot
+
+	def setBCf(self, T, dw = 0.1, wmin =10, wmax = 10000):
+
+		#could improve this with a Kurucz model
+
+		w = np.arange(wmin, wmax, dw)*units.nm
+		f = self.blackbody(w,T).value
+		#norm = np.sum(f)*dw
+		norm = max(f)
+		fn = f/norm
+		ftot = np.sum(fn)
+
+		for filt in self.filters:
+			ft = np.interp(w, self.filterThroughput[filt]['w'], self.filterThroughput[filt]['t'])
 			# plt.plot(w,ft,'--')
 			tot = np.sum(fn*ft)
 			self.BCf[f] = tot/ftot
@@ -1065,7 +1096,7 @@ class LSSTEBworker(object):
 		EB.L2 = line[7]
 		EB.period = 10.**line[2] #days
 		EB.eccentricity = line[3]
-		EB.inclination = line[12] #radians
+		EB.inclination = line[12] *180./np.pi #degrees
 		EB.omega = line[13] #radians
 		EB.dist = line[11] #kpc
 		#pc
