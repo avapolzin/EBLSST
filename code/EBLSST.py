@@ -1,5 +1,5 @@
 ## Have Adam double check the conversion from bolometric to apparent magnitude
-## ellc.lc is in arbitrary flux units... How do we get this into real units??
+## ellc.lc is in arbitrary flux units... am I using this correctly?
 
 import math
 import scipy.special as ss
@@ -97,6 +97,8 @@ class EclipsingBinary(object):
 		self.Mbol = None
 		self.AV = None
 		self.appMagMean = dict()
+		self.L1f = dict()
+		self.L2f = dict()
 		self.appMagMeanAll = None
 		self.absMagMean = dict()
 		self.Ared = dict()
@@ -298,6 +300,12 @@ class EclipsingBinary(object):
 		ldc_2 = [a1_2, a2_2, a3_2, a4_2]
 
 		#light curve
+		self.period = 5
+		self.inclination = 90
+		self.R_1 = 0.05
+		self.R_2 = 0.05
+		self.sbratio = 1.
+		self.q = 1.
 		print(self.t_zero, self.period, self.a, self.q,
 			self.R_1, self.R_2, self.inclination, self.sbratio)
 		#This is in arbitrary units... H ow do we get this into real units??
@@ -306,22 +314,26 @@ class EclipsingBinary(object):
 			f_c=self.f_c, f_s=self.f_s, ld_1=self.ld_1,  ld_2=self.ld_2,
 			radius_1=self.R_1, radius_2=self.R_2, incl=self.inclination, sbratio=self.sbratio, 
 			shape_1=self.shape_1, shape_2=self.shape_2, grid_1=self.grid_1,grid_2=self.grid_2) 
-		lc = lc/np.median(lc)
+		lc = lc/np.max(lc)
 
 		if (min(lc) > 0):
+			#this is mathematically the same as below
+			# #let's redefine these here, but with the lc accounted for
+			# absMag = self.MbolSun - 2.5*np.log10( (self.L1f[filt] + self.L2f[filt])*lc) #This may not be strictly correct?  Should I be using the Sun's magnitude in the given filter? But maybe this is OK because, L1f and L2f are in units of LSun, which is related to the bolometric luminosity?
+			# self.appMag[filt] = absMag + 5.*np.log10(self.dist*100.) + self.Ared[filt]  #multiplying by 1000 to get to parsec units
+
 			magn = -2.5*np.log10(lc)
 			self.appMag[filt] = self.appMagMean[filt] + magn   
 
-			plt.plot((self.obsDates[filt] % self.period), lc,'.')
-			plt.ylim(min(lc), max(lc))
-			plt.show()
-			plt.plot((self.obsDates[filt] % self.period), magn,'.')
-			plt.ylim(max(magn), min(magn))
-			plt.show()
-			plt.plot((self.obsDates[filt] % self.period), self.appMag[filt],'.')
-			plt.ylim(max(self.appMag[filt]), min(self.appMag[filt]))
-			plt.show()
-			raise
+			# plt.plot((self.obsDates[filt] % self.period), lc,'.')
+			# plt.ylim(min(lc), max(lc))
+			# plt.show()
+			# plt.plot((self.obsDates[filt] % self.period), self.appMag[filt],'.', color='red')
+			# plt.plot((self.obsDates[filt] % self.period), self.appMagMean[filt] - 2.5*np.log10(lc), '.', color='blue')
+			# plt.ylim(max(self.appMag[filt]), min(self.appMag[filt]))
+			# plt.show()
+			# print( (self.appMagMean[filt] - 2.5*np.log10(lc)) - self.appMag[filt])
+			# raise
 
 			#Ivezic 2008, https://arxiv.org/pdf/0805.2366.pdf , Table 2
 			sigma2_rand = getSig2Rand(filt, self.appMag[filt])   #random photometric error
@@ -434,6 +446,11 @@ class EclipsingBinary(object):
 		self.RA = coord.icrs.ra.to(units.deg).value
 		self.Dec = coord.icrs.dec.to(units.deg).value
 
+		self.Mbol = self.MbolSun - 2.5*np.log10(self.L1 + self.L2)
+
+		#account for reddening and the different filter throughput functions (currently related to a blackbody)
+		self.appMagMeanAll = 0.
+
 		#one option for getting the exinction
 		self.AV = vespa.stars.extinction.get_AV_infinity(self.RA, self.Dec, frame='icrs')
 		ext = F99(Rv=self.RV)
@@ -442,17 +459,12 @@ class EclipsingBinary(object):
 			#self.Ared[f] = extinction.fitzpatrick99(np.array([self.wavelength[f]*10.]), self.AV, self.RV, unit='aa')[0] #or ccm89
 			self.Ared[f] = ext(self.wavelength[f]*units.nm)*self.AV
 
-		self.Mbol = self.MbolSun - 2.5*np.log10(self.L1 + self.L2)
-
-		#account for reddening and the different filter throughput functions (currently related to a blackbody)
-		self.appMagMeanAll = 0.
-		for f in self.filters:
 			#BCV = self.getFlowerBCV(self.T12)
 			BCf1 = self.SED.getBCf(self.T1*units.K, f)
 			BCf2 = self.SED.getBCf(self.T2*units.K, f)
-			L1f = self.L1 * BCf1
-			L2f = self.L2 * BCf2
-			self.absMagMean[f] = self.MbolSun - 2.5*np.log10(L1f + L2f) #This may not be strictly correct?  Should I be using the Sun's magnitude in the given filter? But maybe this is OK because, L1f and L2f are in units of LSun, which is related to the bolometric luminosity?
+			self.L1f[f] = self.L1 * BCf1
+			self.L2f[f] = self.L2 * BCf2
+			self.absMagMean[f] = self.MbolSun - 2.5*np.log10(self.L1f[f] + self.L2f[f]) #This may not be strictly correct?  Should I be using the Sun's magnitude in the given filter? But maybe this is OK because, L1f and L2f are in units of LSun, which is related to the bolometric luminosity?
 			self.appMagMean[f] = self.absMagMean[f] + 5.*np.log10(self.dist*100.) + self.Ared[f]  #multiplying by 1000 to get to parsec units
 			self.LSS[f] = -999.
 			self.appMagMeanAll += self.appMagMean[f]
