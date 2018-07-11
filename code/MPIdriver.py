@@ -98,8 +98,8 @@ if __name__ == "__main__":
 		g.n_bin = n_bins
 
 		#define the correct paths to the input files and db
-		g.GalaxyFile ='/projects/p30137/ageller/EB-LSST/input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
-		g.GalaxyFileLogPrefix ='/projects/p30137/ageller/EB-LSST/input/fixedPopLogCm_'
+		g.GalaxyFile ='/projects/p30137/ageller/EBLSST/input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
+		g.GalaxyFileLogPrefix ='/projects/p30137/ageller/EBLSST/input/fixedPopLogCm_'
 
 		#now get the binaries
 		gxDat = g.LSSTsim()
@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
 	#get the summary cursor for OpSim, if necessary
 	if (worker.doOpSim):
-		worker.dbFile = '/projects/p30137/ageller/EB-LSST/db/minion_1016_sqlite.db' #for the OpSim database	
+		worker.dbFile = '/projects/p30137/ageller/EBLSST/db/minion_1016_sqlite.db' #for the OpSim database	
 		print('Getting OpSim cursors...')
 		worker.getCursors()
 
