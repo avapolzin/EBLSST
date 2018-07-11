@@ -931,6 +931,7 @@ class LSSTEBworker(object):
 
 		self.ofile = 'output_file.csv' #output file name
 		self.dbFile = '../db/minion_1016_sqlite.db' #for the OpSim database
+		self.filterFilesRoot = '../input/filters/'
 		self.db = None
 		self.cursor = None
 
@@ -1160,4 +1161,5 @@ class LSSTEBworker(object):
 			np.random.seed(seed = self.seed)
 
 		self.SED = SED()
+		SED.filterFilesRoot = self.filterFilesRoot
 		self.SED.readFilters()

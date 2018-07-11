@@ -116,6 +116,8 @@ if __name__ == "__main__":
 
 	#Our LSST EB class to use gatspy and ellc
 	worker = LSSTEBworker()
+	worker.filterFilesRoot = '/projects/p30137/ageller/input/filters/'
+
 	#check for command-line arguments
 	apply_args(worker, args)	
 	if (worker.seed == None):
