@@ -1161,5 +1161,5 @@ class LSSTEBworker(object):
 			np.random.seed(seed = self.seed)
 
 		self.SED = SED()
-		SED.filterFilesRoot = self.filterFilesRoot
+		self.SED.filterFilesRoot = self.filterFilesRoot
 		self.SED.readFilters()
