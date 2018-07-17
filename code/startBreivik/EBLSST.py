@@ -28,7 +28,7 @@ import gatspy
 from gatspy import datasets, periodic
 from gatspy.periodic import LombScargleMultiband, LombScargle, LombScargleFast, LombScargleMultibandFast
 
-#for TRILEGAL and maybe also A_V
+#only using a small portion of vespa, to get the A_V value, but NOTE vespa also can access TRILEGAL galaxy model...
 import vespa
 #extinction will allow me to convert A_V to any wavelength.  Not sure which reference is best.  I will use ccm89, for now. 
 #import extinction
@@ -442,19 +442,17 @@ class EclipsingBinary(object):
 		self.T12 = 10.**(3.762 + 0.25*logLb - 0.5*logRb)
 		#print(self.L1, self.L2, self.T1, self.T2, self.T12)
 
-		if (self.RA == None):
-			coord = SkyCoord(x=self.xGx, y=self.yGx, z=self.zGx, unit='pc', representation='cartesian', frame='galactocentric')
-			self.RA = coord.icrs.ra.to(units.deg).value
-			self.Dec = coord.icrs.dec.to(units.deg).value
+		coord = SkyCoord(x=self.xGx, y=self.yGx, z=self.zGx, unit='pc', representation='cartesian', frame='galactocentric')
+		self.RA = coord.icrs.ra.to(units.deg).value
+		self.Dec = coord.icrs.dec.to(units.deg).value
 
 		self.Mbol = self.MbolSun - 2.5*np.log10(self.L1 + self.L2)
 
 		#account for reddening and the different filter throughput functions (currently related to a blackbody)
 		self.appMagMeanAll = 0.
 
-		#one option for getting the extinction
-		if (self.AV == None):
-			self.AV = vespa.stars.extinction.get_AV_infinity(self.RA, self.Dec, frame='icrs')
+		#one option for getting the exinction
+		self.AV = vespa.stars.extinction.get_AV_infinity(self.RA, self.Dec, frame='icrs')
 		ext = F99(Rv=self.RV)
 		for f in self.filters:
 			#print(extinction.fitzpatrick99(np.array([self.wavelength[f]*10.]), self.AV, self.RV, unit='aa')[0] , ext(self.wavelength[f]*units.nm)*self.AV)
@@ -477,7 +475,7 @@ class EclipsingBinary(object):
 
 		#if we're using OpSim, then get the field ID
 		#get the field ID number from OpSim where this binary would be observed
-		if (self.doOpSim and self.observable and self.OpSimID == None):
+		if (self.doOpSim and self.observable):
 			self.OpSimID = self.getFieldID(self.RA, self.Dec)
 
 	def observe(self, filt):
@@ -513,11 +511,132 @@ class BreivikGalaxy(object):
 		self.popID = '0012'
 		self.seed = None
 
-		#set in getKernel
-		self.fixedPop = None
-		self.sampleKernel = None
 
-	def getKernel(self):
+	def GxSample(self, x, pop, sampleKernel, bw, nEcc, Tobs, output):
+		def untransform(dat, datSet):
+			datMin = min(datSet)
+			datMax = max(datSet)
+			
+			datUntransformed = dat*(datMax-datMin)
+			datUnzeroed = datUntransformed+datMin
+			
+			return datUnzeroed  
+
+	  
+		# CONSTANTS
+		##############################################################################
+		G = 6.67384*math.pow(10, -11.0)
+		c = 2.99792458*math.pow(10, 8.0)
+		parsec = 3.08567758*math.pow(10, 16)
+		Rsun = 6.955*math.pow(10, 8)
+		Msun = 1.9891*math.pow(10,30)
+		day = 86400.0
+		rsun_in_au = 215.0954
+		day_in_year = 365.242
+		sec_in_day = 86400.0
+		sec_in_hour = 3600.0
+		hrs_in_day = 24.0
+		sec_in_year = 3.15569*10**7.0
+		Tobs = 3.15569*10**7.0
+		geo_mass = G/c**2
+		m_in_AU = 1.496*10**11.0
+		
+	  
+		##### UNITS EXPECTED FOR POPULATION ###################
+		# mass: Msun, orbital period: days, Tobs: seconds     #
+		#######################################################
+		# seed the random generator
+		########################################
+		np.random.seed()
+
+		# solar coordinates in the galaxy: in parsecs from 
+		# (Chaper 8 of Galactic Structure and stellar Pops book) Yoshii (2013)
+		############################################################################
+		x_sun = 8000.0
+		y_sun = 0.0
+		z_sun = 25
+		
+		# sample the number of binaries given by nBin
+		#################################################
+		power = []
+		freq = []
+		n = 0
+		nWrite = 0
+		eccBin = 0
+		
+		# open the file to save the gx data
+		#################################################
+		gxFile = 'gxRealization_'+str(x)+'_'+str(self.popID)+'.dat'
+		binDat = [] 
+		
+		nSample = int(self.n_bin/float(self.n_cores))
+		dataSample = sampleKernel.resample(nSample)
+			
+		# check to see if the population has BHs or is ecc
+		###########################################################
+		   
+		m1T = ss.expit(dataSample[0,:])
+		m2T = ss.expit(dataSample[1,:])
+		porbT = ss.expit(dataSample[2,:])
+		eccT = ss.expit(dataSample[3,:])
+		rad1T = ss.expit(dataSample[4,:])
+		rad2T = ss.expit(dataSample[5,:])
+		Lum1T = ss.expit(dataSample[6,:])
+		Lum2T = ss.expit(dataSample[7,:])
+			
+		m1 = untransform(m1T, pop['m1'])
+		m2 = untransform(m2T, pop['m2'])
+		porb = untransform(porbT, np.log10(pop['porb']))
+		ecc = eccT             
+		ii=0
+		for e in ecc:
+			if e < 0:
+				ecc[ii] = abs(e)
+			elif e > 1:
+				ecc[ii] = 1-(ecc-1)
+			ii+=1
+		rad1 = 10**(untransform(rad1T, pop['rad1']))
+		rad2 = 10**(untransform(rad2T, pop['rad2']))
+		Lum1 = 10**(untransform(Lum1T, pop['Lum1']))
+		Lum2 = 10**(untransform(Lum2T, pop['Lum2']))
+		
+		# COMPUTE THE POSITION AND ORIENTATION OF EACH BINARY
+		##############################################################################
+		# First assign the position relative to the galactic center
+		# Assign the radial position of the binary
+		norm_r = 1/2.5
+		a_0_r = np.random.uniform(0, 1.0, len(m1))
+		r = -2.5*np.log(1-a_0_r)
+		# Assign the azimuthal position of the star
+		phi = np.random.uniform(0, 2*np.pi, len(m1))
+		# Assign the z position of the star with r as a parameter
+		norm_zr = 0.71023
+		a_0_zr = np.random.uniform(0, 1.0, len(m1))
+		z = 1/1.42*np.arctanh(a_0_zr/(0.704)-1)
+		# convert to cartesian and parsecs
+		xGX = r*np.cos(phi)*1000.0
+		yGX = r*np.sin(phi)*1000.0
+		zGX = z*1000.0
+		# compute the distance to Earth/LISA/us in kiloparsecs
+		dist = ((xGX-x_sun)**2+(yGX-y_sun)**2+(zGX-z_sun)**2)**(1/2.0)
+		dist_kpc = dist/1000.0
+			
+		inc = np.arccos(2.*np.random.uniform(0,1.0,len(m1)) - 1.)
+		OMEGA = np.random.uniform(0,2*math.pi,len(m1))
+		omega = np.random.uniform(0,2*math.pi,len(m1))
+
+		binDat = np.vstack((m1, m2, porb, ecc, rad1, rad2, Lum1, Lum2, xGX, yGX, zGX, dist_kpc, inc, OMEGA, omega)).T
+		radTotAU = (rad1+rad2)/rsun_in_au
+		radAng = radTotAU/dist
+		binEclipseIndex, = np.where(radAng>inc*4.8e-6)
+	 
+		np.savetxt(gxFile, binDat, delimiter = ',')     
+				
+		#gxFile.close() 
+		output.put(np.shape(binDat)) 
+
+
+	def LSSTsim(self):
 
 		def paramTransform(dat):
 			datMin = min(dat)-0.0001
@@ -593,13 +712,13 @@ class BreivikGalaxy(object):
 				'f','f','f','f','f','f','f','f',
 				'f','f','f','f','f','f','f','f','f')}
 				
-		self.fixedPop = pd.read_hdf(self.GalaxyFile, key='bcm')
+		FixedPop = pd.read_hdf(self.GalaxyFile, key='bcm')
 		FixedPopLog = np.loadtxt(self.GalaxyFileLogPrefix+self.popID+'.dat', delimiter = ',')
 				
 		# COMPUTE THE NUMBER AT PRESENT DAY NORMALIZED BY TOTAL MASS OF THE GX COMPONENT
 		##############################################################################
 		mTotFixed = sum(FixedPopLog[:,2])
-		nPop = int(len(self.fixedPop)*mTotDisk/mTotFixed)
+		nPop = int(len(FixedPop)*mTotDisk/mTotFixed)
 		print('The number of binaries in the Gx for: '+str(self.popID)+' is: '+str(nPop))
 			
 		# TRANSFORM THE FIXED POP DATA TO HAVE LIMITS [0,1] &
@@ -608,38 +727,38 @@ class BreivikGalaxy(object):
 
 		# UNITS: 
 		# MASS [MSUN], ORBITAL PERIOD [LOG10(YEARS)], LUMINOSITIES [LSUN], RADII [RSUN]
-		#self.fixedPop['m1'] = self.fixedPop['mass_1'] #or maybe some more efficient way
+		#FixedPop['m1'] = FixedPop['mass_1'] #or maybe some more efficient way
 		###
-		#print (self.fixedPop['m1'])
+		#print (FixedPop['m1'])
 
-		self.fixedPop['m1'] = self.fixedPop['mass_1']
-		#print (self.fixedPop['m1'])
-		self.fixedPop['m2'] = self.fixedPop['mass_2']
-		self.fixedPop['Lum1'] = self.fixedPop['lumin_1']
-		self.fixedPop['Lum2'] = self.fixedPop['lumin_2']
-		self.fixedPop['rad1'] = self.fixedPop['rad_1']
-		self.fixedPop['rad2'] = self.fixedPop['rad_2']
+		FixedPop['m1'] = FixedPop['mass_1']
+		#print (FixedPop['m1'])
+		FixedPop['m2'] = FixedPop['mass_2']
+		FixedPop['Lum1'] = FixedPop['lumin_1']
+		FixedPop['Lum2'] = FixedPop['lumin_2']
+		FixedPop['rad1'] = FixedPop['rad_1']
+		FixedPop['rad2'] = FixedPop['rad_2']
 
-		m1Trans = ss.logit(paramTransform(self.fixedPop['m1']))
+		m1Trans = ss.logit(paramTransform(FixedPop['m1']))
 		bwM1 = astroStats.scott_bin_width(m1Trans)
 				
-		m2Trans = ss.logit(paramTransform(self.fixedPop['m2']))
+		m2Trans = ss.logit(paramTransform(FixedPop['m2']))
 		bwM2 = astroStats.scott_bin_width(m2Trans)
 				
-		porbTrans = ss.logit(paramTransform(np.log10(self.fixedPop['porb'])))
+		porbTrans = ss.logit(paramTransform(np.log10(FixedPop['porb'])))
 		bwPorb = astroStats.scott_bin_width(porbTrans)
 				
-		Lum1Trans = ss.logit(paramTransform(self.fixedPop['Lum1']))
-		bwLum1 = astroStats.scott_bin_width(self.fixedPop['Lum1'])
+		Lum1Trans = ss.logit(paramTransform(FixedPop['Lum1']))
+		bwLum1 = astroStats.scott_bin_width(FixedPop['Lum1'])
 
-		Lum2Trans = ss.logit(paramTransform(self.fixedPop['Lum2']))
-		bwLum2 = astroStats.scott_bin_width(self.fixedPop['Lum2'])
+		Lum2Trans = ss.logit(paramTransform(FixedPop['Lum2']))
+		bwLum2 = astroStats.scott_bin_width(FixedPop['Lum2'])
 					
 		# The eccentricity is already transformed, but only fit KDE to ecc if ecc!=0.0
-		eIndex, = np.where(self.fixedPop['ecc']>1e-2)
+		eIndex, = np.where(FixedPop['ecc']>1e-2)
 		if len(eIndex) > 50:
 
-			eccTrans = self.fixedPop['ecc']
+			eccTrans = FixedPop['ecc']
 			for jj in eccTrans.keys():
 				if eccTrans[jj] > 0.999:
 					eccTrans[jj] = 0.999
@@ -650,13 +769,13 @@ class BreivikGalaxy(object):
 		else:
 			bwEcc = 100.0
 
-		rad1Trans = ss.logit(paramTransform(self.fixedPop['rad1']))
+		rad1Trans = ss.logit(paramTransform(FixedPop['rad1']))
 		bwRad1 = astroStats.scott_bin_width(rad1Trans)
 
-		rad2Trans = ss.logit(paramTransform(self.fixedPop['rad2']))
+		rad2Trans = ss.logit(paramTransform(FixedPop['rad2']))
 		bwRad2 = astroStats.scott_bin_width(rad2Trans)
 		#print(bwEcc,bwPorb,bwM1,bwM2,bwLum1,bwLum2,bwRad1,bwRad2)
-		#popBw = min(bwEcc,bwPorb,bwM1,bwM2,bwLum1,bwLum2,bwRad1,bwRad2)
+		popBw = min(bwEcc,bwPorb,bwM1,bwM2,bwLum1,bwLum2,bwRad1,bwRad2)
 				
 		# GENERATE THE DATA LIST DEPENDING ON THE TYPE OF COMPACT BINARY TYPE
 		##############################################################################
@@ -671,150 +790,18 @@ class BreivikGalaxy(object):
 		# GENERATE THE KDE FOR THE DATA LIST
 		##############################################################################
 		if (self.verbose):
+			print(popBw)
 			print(datList)
 
-		self.sampleKernel = scipy.stats.gaussian_kde(datList)#, bw_method=popBw)
-
-
-	def GxSample(self, nSample, x=None, output=None, saveFile=False):
-		def untransform(dat, datSet):
-			datMin = min(datSet)
-			datMax = max(datSet)
-			
-			datUntransformed = dat*(datMax-datMin)
-			datUnzeroed = datUntransformed+datMin
-			
-			return datUnzeroed  
-
-	  
-		# CONSTANTS
-		##############################################################################
-		G = 6.67384*math.pow(10, -11.0)
-		c = 2.99792458*math.pow(10, 8.0)
-		parsec = 3.08567758*math.pow(10, 16)
-		Rsun = 6.955*math.pow(10, 8)
-		Msun = 1.9891*math.pow(10,30)
-		day = 86400.0
-		rsun_in_au = 215.0954
-		day_in_year = 365.242
-		sec_in_day = 86400.0
-		sec_in_hour = 3600.0
-		hrs_in_day = 24.0
-		sec_in_year = 3.15569*10**7.0
-		geo_mass = G/c**2
-		m_in_AU = 1.496*10**11.0
-		
-	  
-		##### UNITS EXPECTED FOR POPULATION ###################
-		# mass: Msun, orbital period: days, Tobs: seconds     #
-		#######################################################
-		# seed the random generator
-		########################################
-		np.random.seed()
-
-		# solar coordinates in the galaxy: in parsecs from 
-		# (Chaper 8 of Galactic Structure and stellar Pops book) Yoshii (2013)
-		############################################################################
-		x_sun = 8000.0
-		y_sun = 0.0
-		z_sun = 25
-		
-		# sample the number of binaries given by nBin
-		#################################################
-		power = []
-		freq = []
-		n = 0
-		nWrite = 0
-		eccBin = 0
-		
-		# open the file to save the gx data
-		#################################################
-		binDat = [] 
-		
-		dataSample = self.sampleKernel.resample(nSample)
-			
-		# check to see if the population has BHs or is ecc
-		###########################################################
-		   
-		m1T = ss.expit(dataSample[0,:])
-		m2T = ss.expit(dataSample[1,:])
-		porbT = ss.expit(dataSample[2,:])
-		eccT = ss.expit(dataSample[3,:])
-		rad1T = ss.expit(dataSample[4,:])
-		rad2T = ss.expit(dataSample[5,:])
-		Lum1T = ss.expit(dataSample[6,:])
-		Lum2T = ss.expit(dataSample[7,:])
-			
-		m1 = untransform(m1T, self.fixedPop['m1'])
-		m2 = untransform(m2T, self.fixedPop['m2'])
-		porb = untransform(porbT, np.log10(self.fixedPop['porb']))
-		ecc = eccT             
-		ii=0
-		for e in ecc:
-			if e < 0:
-				ecc[ii] = abs(e)
-			elif e > 1:
-				ecc[ii] = 1-(ecc-1)
-			ii+=1
-		rad1 = 10**(untransform(rad1T, self.fixedPop['rad1']))
-		rad2 = 10**(untransform(rad2T, self.fixedPop['rad2']))
-		Lum1 = 10**(untransform(Lum1T, self.fixedPop['Lum1']))
-		Lum2 = 10**(untransform(Lum2T, self.fixedPop['Lum2']))
-		
-		# COMPUTE THE POSITION AND ORIENTATION OF EACH BINARY
-		##############################################################################
-		# First assign the position relative to the galactic center
-		# Assign the radial position of the binary
-		norm_r = 1/2.5
-		a_0_r = np.random.uniform(0, 1.0, len(m1))
-		r = -2.5*np.log(1-a_0_r)
-		# Assign the azimuthal position of the star
-		phi = np.random.uniform(0, 2*np.pi, len(m1))
-		# Assign the z position of the star with r as a parameter
-		norm_zr = 0.71023
-		a_0_zr = np.random.uniform(0, 1.0, len(m1))
-		z = 1/1.42*np.arctanh(a_0_zr/(0.704)-1)
-		# convert to cartesian and parsecs
-		xGX = r*np.cos(phi)*1000.0
-		yGX = r*np.sin(phi)*1000.0
-		zGX = z*1000.0
-		# compute the distance to Earth/LISA/us in kiloparsecs
-		dist = ((xGX-x_sun)**2+(yGX-y_sun)**2+(zGX-z_sun)**2)**(1/2.0)
-		dist_kpc = dist/1000.0
-			
-		inc = np.arccos(2.*np.random.uniform(0,1.0,len(m1)) - 1.)
-		OMEGA = np.random.uniform(0,2*math.pi,len(m1))
-		omega = np.random.uniform(0,2*math.pi,len(m1))
-
-		binDat = np.vstack((m1, m2, porb, ecc, rad1, rad2, Lum1, Lum2, xGX, yGX, zGX, dist_kpc, inc, OMEGA, omega)).T		
-
-		# radTotAU = (rad1+rad2)/rsun_in_au
-		# radAng = radTotAU/dist
-		# binEclipseIndex, = np.where(radAng>inc*4.8e-6)
-	 
-		if (saveFile):
-			gxFile = 'gxRealization_'+str(x)+'_'+str(self.popID)+'.dat'
-			np.savetxt(gxFile, binDat, delimiter = ',')     
-		
-		if (output == None):
-			return pd.DataFrame(binDat, columns=['m1', 'm2', 'porb', 'ecc', 'rad1', 'rad2', 'Lum1', 'Lum2', 'xGX', 'yGX', 'zGX', 'dist_kpc', 'inc', 'OMEGA', 'omega'])
-		else:	
-			output.put(np.shape(binDat)) 
-
-
-
-
-	def LSSTsim(self):
-
-		self.getKernel()		
+		sampleKernel = scipy.stats.gaussian_kde(datList)#, bw_method=popBw)
+					
 				
 		# CALL THE MONTE CARLO GALAXY SAMPLE CODE
 		##############################################################################
 		print('nSample: '+str(self.n_bin))
 		output = multiprocessing.Queue()
-		nSample = int(self.n_bin/float(self.n_cores))
 		processes = [multiprocessing.Process(target = self.GxSample, \
-						args = (nSample, x, output, True)) \
+						args = (x, FixedPop, sampleKernel, popBw, len(eIndex), Tobs, output)) \
 						for x in range(self.n_cores)]
 		for p in processes:
 			p.start()
@@ -845,33 +832,6 @@ class BreivikGalaxy(object):
 ###########################################################################################################
 ###########################################################################################################
 
-class TRILEGAL(object):
-	def __init__(self, *args,**kwargs):
-		self.area = 10.
-		self.maglim = 24
-		self.sigma_AV = 0.1 #default
-		self.binaries = False
-		self.filterset = 'lsst' 
-		self.tmpfname = 'TRILEGAL_model.h5'
-
-		self.RA = None
-		self.Dec = None
-
-		self.shuffle = True
-	def getModel(self):
-		vespa.stars.trilegal.get_trilegal(self.tmpfname, self.RA, self.Dec, galactic=False, \
-			filterset=self.filterset, area=self.area, maglim=self.maglim, binaries=self.binaries, \
-			trilegal_version='1.6', sigma_AV=self.sigma_AV, convert_h5=True)
-		model = pd.read_hdf(self.tmpfname)
-		if (self.shuffle):
-			model.sample(frac=1).reset_index(drop=True)
-		os.remove(self.tmpfname)
-		return model
-
-###########################################################################################################
-###########################################################################################################
-###########################################################################################################
-###########################################################################################################
 
 class SED(object):
 	def __init__(self, *args,**kwargs):
@@ -988,14 +948,6 @@ class LSSTEBworker(object):
 		self.n_radius_failed = 0
 
 
-		#from OpSim
-		self.OpSimID = None
-		self.OpSimRA = None
-		self.OpSimDec = None
-		self.OpSimNobs = None
-
-		self.TRILEGALmodel = None
-
 		self.seed = None
 
 		self.SED = None
@@ -1003,8 +955,6 @@ class LSSTEBworker(object):
 	#database manipulation
 	def getCursors(self):
 		#gets SQlite cursor to pull information from OpSim
-		#https://www.lsst.org/scientists/simulations/opsim/summary-table-column-descriptions-v335
-		#http://ops2.lsst.org/docs/current/architecture.html
 		self.db = sqlite3.connect(self.dbFile)
 		cursor = self.db.cursor()
 
@@ -1017,30 +967,6 @@ class LSSTEBworker(object):
 		print("have field cursor.")
 
 
-
-	def getAllOpSimFields(self):
-		print("getting OpSim fields...")
-		self.getCursors()
-		FieldID = self.summaryCursor[:,0].astype('int')
-		date = self.summaryCursor[:,1].astype('float')
-
-		self.OpSimID = np.array([])
-		self.OpSimRA = np.array([])
-		self.OpSimDec = np.array([])
-		self.OpSimNobs = np.array([])
-		for x in self.fieldCursor:
-			inS = np.where(FieldID == int(x[0]))[0]
-			self.OpSimNobs = np.append(self.OpSimNobs, len(inS))
-			self.OpSimID = np.append(self.OpSimID, x[0])
-			self.OpSimRA = np.append(self.OpSimRA, x[1])
-			self.OpSimDec = np.append(self.OpSimDec, x[2])
-	
-	def makeTRILEGAL(self, i):
-		gal = TRILEGAL()
-		gal.RA = self.OpSimRA[i]
-		gal.Dec = self.OpSimDec[i]
-		gal.tmpfname = 'TRILEGAL_model_fID'+str(self.OpSimID[i])+'.h5'
-		self.TRILEGALmodel = gal.getModel()	
 
 	def make_gatspy_plots(self, j):
 		EB = self.return_dict[j]
@@ -1167,7 +1093,7 @@ class LSSTEBworker(object):
 
 
 
-	def getEB(self, line, i, OpSimi):
+	def getEB(self, line, i):
 		EB = EclipsingBinary()
 
 		# EB.seed = self.seed + i
@@ -1185,16 +1111,11 @@ class LSSTEBworker(object):
 		EB.eccentricity = line[3]
 		EB.inclination = line[12] *180./np.pi #degrees
 		EB.omega = line[13] #radians
-
 		EB.dist = line[11] #kpc
-		if (self.TRILEGALmodel == None):
-			#pc
-			EB.xGx = line[8] 
-			EB.yGx = line[9] 
-			EB.zGx = line[10] 
-		else:
-			EB.RA = self.OpSimRA[OpSimi]
-			EB.Dec = self.OpSimDec[OpSimi]
+		#pc
+		EB.xGx = line[8] 
+		EB.yGx = line[9] 
+		EB.zGx = line[10] 
 
 		EB.t_zero = np.random.random() * EB.period
 
@@ -1242,4 +1163,3 @@ class LSSTEBworker(object):
 		self.SED = SED()
 		self.SED.filterFilesRoot = self.filterFilesRoot
 		self.SED.readFilters()
-

@@ -20,3 +20,6 @@ __pycache__
 *.db
 
 *.csv
+*.vot
+*.dat
+*.h5

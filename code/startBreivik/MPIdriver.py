@@ -107,9 +107,6 @@ if __name__ == "__main__":
 		print("reshaping to send to other processes")
 		sendbuf = np.reshape(gxDat, (size, n_binr*nfields))
 
-##########
-#####Broadcast field array, and an array with indices that are available to run.  Can I modify that to remove a value when chosen to run?
-##########
 
 	#scatter to the all of the processes
 	comm.Scatter(sendbuf,recvbuf, root=root) 
