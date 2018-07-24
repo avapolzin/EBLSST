@@ -5,6 +5,7 @@ import math
 import scipy.special as ss
 import scipy.stats
 from scipy.interpolate import interp1d
+from scipy.integrate import quad#, romberg
 import multiprocessing 
 import logging
 import numpy as np
@@ -612,13 +613,15 @@ class BreivikGalaxy(object):
 		###
 		#print (self.fixedPop['m1'])
 
+		#some changes to the names here because some were in the log but not names as such by Katie!
 		self.fixedPop['m1'] = self.fixedPop['mass_1']
 		#print (self.fixedPop['m1'])
 		self.fixedPop['m2'] = self.fixedPop['mass_2']
-		self.fixedPop['Lum1'] = self.fixedPop['lumin_1']
-		self.fixedPop['Lum2'] = self.fixedPop['lumin_2']
-		self.fixedPop['rad1'] = self.fixedPop['rad_1']
-		self.fixedPop['rad2'] = self.fixedPop['rad_2']
+		self.fixedPop['logL1'] = self.fixedPop['lumin_1']
+		self.fixedPop['logL2'] = self.fixedPop['lumin_2']
+		self.fixedPop['logr1'] = self.fixedPop['rad_1']
+		self.fixedPop['logr2'] = self.fixedPop['rad_2']
+		self.fixedPop['logp'] = np.log10(self.fixedPop['porb'])
 
 		m1Trans = ss.logit(paramTransform(self.fixedPop['m1']))
 		bwM1 = astroStats.scott_bin_width(m1Trans)
@@ -626,14 +629,14 @@ class BreivikGalaxy(object):
 		m2Trans = ss.logit(paramTransform(self.fixedPop['m2']))
 		bwM2 = astroStats.scott_bin_width(m2Trans)
 				
-		porbTrans = ss.logit(paramTransform(np.log10(self.fixedPop['porb'])))
+		porbTrans = ss.logit(paramTransform(self.fixedPop['logp']))
 		bwPorb = astroStats.scott_bin_width(porbTrans)
 				
-		Lum1Trans = ss.logit(paramTransform(self.fixedPop['Lum1']))
-		bwLum1 = astroStats.scott_bin_width(self.fixedPop['Lum1'])
+		Lum1Trans = ss.logit(paramTransform(self.fixedPop['logL1']))
+		bwLum1 = astroStats.scott_bin_width(self.fixedPop['logL1'])
 
-		Lum2Trans = ss.logit(paramTransform(self.fixedPop['Lum2']))
-		bwLum2 = astroStats.scott_bin_width(self.fixedPop['Lum2'])
+		Lum2Trans = ss.logit(paramTransform(self.fixedPop['logL2']))
+		bwLum2 = astroStats.scott_bin_width(self.fixedPop['logL2'])
 					
 		# The eccentricity is already transformed, but only fit KDE to ecc if ecc!=0.0
 		eIndex, = np.where(self.fixedPop['ecc']>1e-2)
@@ -650,10 +653,10 @@ class BreivikGalaxy(object):
 		else:
 			bwEcc = 100.0
 
-		rad1Trans = ss.logit(paramTransform(self.fixedPop['rad1']))
+		rad1Trans = ss.logit(paramTransform(self.fixedPop['logr1']))
 		bwRad1 = astroStats.scott_bin_width(rad1Trans)
 
-		rad2Trans = ss.logit(paramTransform(self.fixedPop['rad2']))
+		rad2Trans = ss.logit(paramTransform(self.fixedPop['logr2']))
 		bwRad2 = astroStats.scott_bin_width(rad2Trans)
 		#print(bwEcc,bwPorb,bwM1,bwM2,bwLum1,bwLum2,bwRad1,bwRad2)
 		#popBw = min(bwEcc,bwPorb,bwM1,bwM2,bwLum1,bwLum2,bwRad1,bwRad2)
@@ -747,7 +750,7 @@ class BreivikGalaxy(object):
 			
 		m1 = untransform(m1T, self.fixedPop['m1'])
 		m2 = untransform(m2T, self.fixedPop['m2'])
-		porb = untransform(porbT, np.log10(self.fixedPop['porb']))
+		logp = untransform(porbT, self.fixedPop['logp'])
 		ecc = eccT             
 		ii=0
 		for e in ecc:
@@ -756,10 +759,10 @@ class BreivikGalaxy(object):
 			elif e > 1:
 				ecc[ii] = 1-(ecc-1)
 			ii+=1
-		rad1 = 10**(untransform(rad1T, self.fixedPop['rad1']))
-		rad2 = 10**(untransform(rad2T, self.fixedPop['rad2']))
-		Lum1 = 10**(untransform(Lum1T, self.fixedPop['Lum1']))
-		Lum2 = 10**(untransform(Lum2T, self.fixedPop['Lum2']))
+		rad1 = 10**(untransform(rad1T, self.fixedPop['logr1']))
+		rad2 = 10**(untransform(rad2T, self.fixedPop['logr2']))
+		Lum1 = 10**(untransform(Lum1T, self.fixedPop['logL1']))
+		Lum2 = 10**(untransform(Lum2T, self.fixedPop['logL2']))
 		
 		# COMPUTE THE POSITION AND ORIENTATION OF EACH BINARY
 		##############################################################################
@@ -786,7 +789,7 @@ class BreivikGalaxy(object):
 		OMEGA = np.random.uniform(0,2*math.pi,len(m1))
 		omega = np.random.uniform(0,2*math.pi,len(m1))
 
-		binDat = np.vstack((m1, m2, porb, ecc, rad1, rad2, Lum1, Lum2, xGX, yGX, zGX, dist_kpc, inc, OMEGA, omega)).T		
+		binDat = np.vstack((m1, m2, logp, ecc, rad1, rad2, Lum1, Lum2, xGX, yGX, zGX, dist_kpc, inc, OMEGA, omega)).T		
 
 		# radTotAU = (rad1+rad2)/rsun_in_au
 		# radAng = radTotAU/dist
@@ -797,7 +800,7 @@ class BreivikGalaxy(object):
 			np.savetxt(gxFile, binDat, delimiter = ',')     
 		
 		if (output == None):
-			return pd.DataFrame(binDat, columns=['m1', 'm2', 'logp', 'ecc', 'rad1', 'rad2', 'Lum1', 'Lum2', 'xGX', 'yGX', 'zGX', 'dist_kpc', 'inc', 'OMEGA', 'omega'])
+			return pd.DataFrame(binDat, columns=['m1', 'm2', 'logp', 'ecc', 'logr1', 'logr2', 'logL1', 'logL2', 'xGX', 'yGX', 'zGX', 'dist_kpc', 'inc', 'OMEGA', 'omega'])
 		else:	
 			output.put(np.shape(binDat)) 
 
@@ -891,46 +894,42 @@ class SED(object):
 			#https://github.com/lsst/throughputs/tree/master/baseline
 			fname = self.filterFilesRoot + 'filter_'+f[0]+'.dat' 
 			df = pd.read_csv(fname, delim_whitespace=True, header=None, names=['w','t'], skiprows = 6)
-			self.filterThroughput[f] = {'w':df['w'].values*units.nm, 't':df['t'].values}
+			wrng = df[(df['t'] > 0)]
+			wmin = min(wrng['w'])
+			wmax = max(wrng['w'])
+			self.filterThroughput[f] = {'w':df['w'].values, 't':df['t'].values, 'wmin':wmin, 'wmax':wmax}
 
-	def blackbody(self, w, T):
+	def bb(self, w, T):
 		#erg/s/cm^2/AA/steradian
+		#expects w in nm but without a unit attached
+		w *= units.nm
+
 		Bl = 2.*constants.h*constants.c**2./w**5. / (np.exp( constants.h*constants.c / (w*constants.k_B*T)) -1.)
-		return Bl.decompose()
+		return Bl.decompose().cgs.value
 
-	def getBCf(self, T, filt, dw = 0.1, wmin =10, wmax = 10000):
-
-		#could improve this with a Kurucz model
-
-		w = np.arange(wmin, wmax, dw)*units.nm
-		f = self.blackbody(w,T).value
-		#norm = np.sum(f)*dw
-		norm = max(f)
-		fn = f/norm
-		ftot = np.sum(fn)
-
+	def bbFilter(self, w, T, filt):
+		fB = self.bb(w,T)
 		ft = np.interp(w, self.filterThroughput[filt]['w'], self.filterThroughput[filt]['t'])
-		# plt.plot(w,ft,'--')
-		tot = np.sum(fn*ft)
+		return fB*ft
 
-		return tot/ftot
-
-	def setBCf(self, T, dw = 0.1, wmin =10, wmax = 10000):
+	def getBCf(self, T, filt, wmin =10, wmax = 10000):
 
 		#could improve this with a Kurucz model
 
-		w = np.arange(wmin, wmax, dw)*units.nm
-		f = self.blackbody(w,T).value
-		#norm = np.sum(f)*dw
-		norm = max(f)
-		fn = f/norm
-		ftot = np.sum(fn)
+		fB, fB_err = quad(self.bb, wmin, wmax, args= (T,))
+		fBf, fBf_err = quad(self.bbFilter, self.filterThroughput[filt]['wmin'], self.filterThroughput[filt]['wmax'], args= (T,filt))
+
+		return fBf/fB
+
+	def setBCf(self, T, wmin =10, wmax = 10000):
+
+		#could improve this with a Kurucz model
+
+		fB, fB_err = quad(self.bb, wmin, wmax, args= (T,))
 
 		for filt in self.filters:
-			ft = np.interp(w, self.filterThroughput[filt]['w'], self.filterThroughput[filt]['t'])
-			# plt.plot(w,ft,'--')
-			tot = np.sum(fn*ft)
-			self.BCf[f] = tot/ftot
+			fBf, fBf_err = quad(self.bbFilter, self.filterThroughput[filt]['wmin'], self.filterThroughput[filt]['wmax'], args= (T,filt))
+			self.BCf[f] = fBf/fB
 
 		#print(self.BCf)
 
