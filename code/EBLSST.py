@@ -35,7 +35,7 @@ import vespa
 #import extinction
 #could use this instead, seems to be linked more closely to astropy : https://dust-extinction.readthedocs.io/en/latest/index.html
 #pip install git+https://github.com/karllark/dust_extinction.git
-from dust_extinction.parameter_averages import F99
+from dust_extinction.parameter_averages import F04
 
 filters = ['u_', 'g_', 'r_', 'i_', 'z_', 'y_']
 
@@ -456,7 +456,7 @@ class EclipsingBinary(object):
 		#one option for getting the extinction
 		if (self.AV == None):
 			self.AV = vespa.stars.extinction.get_AV_infinity(self.RA, self.Dec, frame='icrs')
-		ext = F99(Rv=self.RV)
+		ext = F04(Rv=self.RV)
 		for f in self.filters:
 			#print(extinction.fitzpatrick99(np.array([self.wavelength[f]*10.]), self.AV, self.RV, unit='aa')[0] , ext(self.wavelength[f]*units.nm)*self.AV)
 			#self.Ared[f] = extinction.fitzpatrick99(np.array([self.wavelength[f]*10.]), self.AV, self.RV, unit='aa')[0] #or ccm89
@@ -469,6 +469,7 @@ class EclipsingBinary(object):
 			self.L2f[f] = self.L2 * BCf2
 			self.absMagMean[f] = self.MbolSun - 2.5*np.log10(self.L1f[f] + self.L2f[f]) #This may not be strictly correct?  Should I be using the Sun's magnitude in the given filter? But maybe this is OK because, L1f and L2f are in units of LSun, which is related to the bolometric luminosity?
 			self.appMagMean[f] = self.absMagMean[f] + 5.*np.log10(self.dist*100.) + self.Ared[f]  #multiplying by 1000 to get to parsec units
+			#print(self.wavelength[f], BCf1, self.appMagMean[f], self.Ared[f])
 			self.LSS[f] = -999.
 			self.appMagMeanAll += self.appMagMean[f]
 		self.appMagMeanAll /= len(self.filters)
@@ -883,6 +884,8 @@ class SED(object):
 		self.filters = filters
 		self.filterThroughput = dict()
 
+		self.useQuad = False #could integrate with Quad, but that is very slow, gives warnings, and appears to give nearly identical results to the summation
+
 		self.BCf = dict()
 
 	def readFilters(self):
@@ -908,16 +911,31 @@ class SED(object):
 		return Bl.decompose().cgs.value
 
 	def bbFilter(self, w, T, filt):
+
 		fB = self.bb(w,T)
 		ft = np.interp(w, self.filterThroughput[filt]['w'], self.filterThroughput[filt]['t'])
 		return fB*ft
 
-	def getBCf(self, T, filt, wmin =10, wmax = 10000):
+
+
+	def getBCf(self, T, filt, wmin =10, wmax = 10000, dw = 0.1):
 
 		#could improve this with a Kurucz model
+		if (self.useQuad):
+			fB, fB_err = quad(self.bb, wmin, wmax, args= (T,))
+			fBf, fBf_err = quad(self.bbFilter, self.filterThroughput[filt]['wmin'], self.filterThroughput[filt]['wmax'], args= (T,filt))
 
-		fB, fB_err = quad(self.bb, wmin, wmax, args= (T,))
-		fBf, fBf_err = quad(self.bbFilter, self.filterThroughput[filt]['wmin'], self.filterThroughput[filt]['wmax'], args= (T,filt))
+
+		else:
+			w = np.arange(wmin, wmax, dw)
+			fB = np.sum(self.bb(w,T))
+			fBf = np.sum(self.bbFilter(w,T,filt))
+
+			# a check
+			# print("sum", filt, fB, fBf, fBf/fB)
+			# fB, fB_err = quad(self.bb, wmin, wmax, args= (T,))
+			# fBf, fBf_err = quad(self.bbFilter, self.filterThroughput[filt]['wmin'], self.filterThroughput[filt]['wmax'], args= (T,filt))
+			# print("quad", filt, fB, fBf, fBf/fB)
 
 		return fBf/fB
 
@@ -925,10 +943,18 @@ class SED(object):
 
 		#could improve this with a Kurucz model
 
-		fB, fB_err = quad(self.bb, wmin, wmax, args= (T,))
+		if (self.useQuad):
+			fB, fB_err = quad(self.bb, wmin, wmax, args= (T,))
+		else:			
+			fB = np.sum(self.bb(w,T))
+
 
 		for filt in self.filters:
-			fBf, fBf_err = quad(self.bbFilter, self.filterThroughput[filt]['wmin'], self.filterThroughput[filt]['wmax'], args= (T,filt))
+			if (self.useQuad):
+				fBf, fBf_err = quad(self.bbFilter, self.filterThroughput[filt]['wmin'], self.filterThroughput[filt]['wmax'], args= (T,filt))
+			else:
+				fBf = np.sum(self.bbFilter(w,T,filt))
+
 			self.BCf[f] = fBf/fB
 
 		#print(self.BCf)
@@ -1166,7 +1192,7 @@ class LSSTEBworker(object):
 
 
 
-	def getEB(self, line, i, OpSimi):
+	def getEB(self, line, OpSimi):
 		EB = EclipsingBinary()
 
 		# EB.seed = self.seed + i
@@ -1194,6 +1220,9 @@ class LSSTEBworker(object):
 		else:
 			EB.RA = self.OpSimRA[OpSimi]
 			EB.Dec = self.OpSimDec[OpSimi]
+
+		if (len(line) >= 15):
+			EB.AV = line[14]
 
 		EB.t_zero = np.random.random() * EB.period
 
