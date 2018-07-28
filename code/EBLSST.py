@@ -1,11 +1,14 @@
 ## Have Adam double check the conversion from bolometric to apparent magnitude
 ## ellc.lc is in arbitrary flux units... am I using this correctly?
 
+#try this for LSST mags?
+# http://sncosmo.readthedocs.io/en/v1.5.x/models.html 
+
 import math
 import scipy.special as ss
 import scipy.stats
 from scipy.interpolate import interp1d
-from scipy.integrate import quad#, romberg
+from scipy.integrate import quad, romberg
 import multiprocessing 
 import logging
 import numpy as np
@@ -98,10 +101,9 @@ class EclipsingBinary(object):
 		self.Mbol = None
 		self.AV = None
 		self.appMagMean = dict()
-		self.L1f = dict()
-		self.L2f = dict()
+		self.Fv1 = dict()
+		self.Fv2 = dict()
 		self.appMagMeanAll = None
-		self.absMagMean = dict()
 		self.Ared = dict()
 		self.BC = dict()
 
@@ -295,11 +297,16 @@ class EclipsingBinary(object):
 		if (filt == 'y_'):
 			filtellc = 'z_' #because we don't have limb darkening for y_
 		ldy_filt = ellc.ldy.LimbGravityDarkeningCoeffs(filtellc)
-		a1_1, a2_1, a3_1, a4_1, y = ldy_filt(self.T1, self.g1, self.M_H)
-		a1_2, a2_2, a3_2, a4_2, y = ldy_filt(self.T2, self.g2, self.M_H)
+		T1 = np.clip(self.T1, 3500., 50000.)
+		T2 = np.clip(self.T2, 3500., 50000.)
+		g1 = np.clip(self.g1, 0., 5.)
+		g2 = np.clip(self.g2, 0., 5.)
+		# print(T1, T2, g1, g2, self.g1, self.g2, self.M_H)
+		a1_1, a2_1, a3_1, a4_1, y = ldy_filt(T1, g1, self.M_H)
+		a1_2, a2_2, a3_2, a4_2, y = ldy_filt(T2, g2, self.M_H)
 		ldc_1 = [a1_1, a2_1, a3_1, a4_1] 
 		ldc_2 = [a1_2, a2_2, a3_2, a4_2]
-
+		# print(ldc_1, ldc_2)
 		#light curve
 		self.period = 5
 		self.inclination = 90
@@ -307,15 +314,15 @@ class EclipsingBinary(object):
 		self.R_2 = 0.05
 		self.sbratio = 1.
 		self.q = 1.
-		print(self.t_zero, self.period, self.a, self.q,
-			self.R_1, self.R_2, self.inclination, self.sbratio)
+		# print(self.t_zero, self.period, self.a, self.q,
+		# 	self.R_1, self.R_2, self.inclination, self.sbratio)
 		#This is in arbitrary units... H ow do we get this into real units??
 		lc = ellc.lc(self.obsDates[filt], ldc_1=ldc_1, ldc_2=ldc_2, 
 			t_zero=self.t_zero, period=self.period, a=self.a, q=self.q,
 			f_c=self.f_c, f_s=self.f_s, ld_1=self.ld_1,  ld_2=self.ld_2,
 			radius_1=self.R_1, radius_2=self.R_2, incl=self.inclination, sbratio=self.sbratio, 
 			shape_1=self.shape_1, shape_2=self.shape_2, grid_1=self.grid_1,grid_2=self.grid_2) 
-		lc = lc/np.max(lc)
+		lc = lc/np.max(lc) #maybe there's a better normalization?
 
 		if (min(lc) > 0):
 			#this is mathematically the same as below
@@ -323,8 +330,8 @@ class EclipsingBinary(object):
 			# absMag = self.MbolSun - 2.5*np.log10( (self.L1f[filt] + self.L2f[filt])*lc) #This may not be strictly correct?  Should I be using the Sun's magnitude in the given filter? But maybe this is OK because, L1f and L2f are in units of LSun, which is related to the bolometric luminosity?
 			# self.appMag[filt] = absMag + 5.*np.log10(self.dist*100.) + self.Ared[filt]  #multiplying by 1000 to get to parsec units
 
-			magn = -2.5*np.log10(lc)
-			self.appMag[filt] = self.appMagMean[filt] + magn   
+			Fv = self.Fv1[filt] + self.Fv2[filt]
+			self.appMag[filt] = -2.5*np.log10(Fv*lc/(3631.*units.Jansky)) + self.Ared[filt] #AB magnitude 
 
 			# plt.plot((self.obsDates[filt] % self.period), lc,'.')
 			# plt.ylim(min(lc), max(lc))
@@ -424,10 +431,10 @@ class EclipsingBinary(object):
 		#self.initializeSeed()
 
 		self.q = self.m2/self.m1
-		self.T1 = min(50000., max(3500., self.getTeff(self.L1, self.r1)))
-		self.T2 = min(50000., max(3500., self.getTeff(self.L2, self.r2)))
-		self.g1 = min(5., max(0., self.getlogg(self.m1, self.L1, self.T1)))
-		self.g2 = min(5., max(0., self.getlogg(self.m2, self.L2, self.T2)))
+		self.T1 = self.getTeff(self.L1, self.r1)
+		self.T2 = self.getTeff(self.L2, self.r2)
+		self.g1 = self.getlogg(self.m1, self.L1, self.T1)
+		self.g2 = self.getlogg(self.m2, self.L2, self.T2)
 		self.a = self.getafromP(self.m1*units.solMass, self.m2*units.solMass, self.period*units.day).to(units.solRad).value
 		self.f_c = np.sqrt(self.eccentricity)*np.cos(self.omega*np.pi/180.)
 		self.f_s = np.sqrt(self.eccentricity)*np.sin(self.omega*np.pi/180.)
@@ -448,8 +455,6 @@ class EclipsingBinary(object):
 			self.RA = coord.icrs.ra.to(units.deg).value
 			self.Dec = coord.icrs.dec.to(units.deg).value
 
-		self.Mbol = self.MbolSun - 2.5*np.log10(self.L1 + self.L2)
-
 		#account for reddening and the different filter throughput functions (currently related to a blackbody)
 		self.appMagMeanAll = 0.
 
@@ -462,14 +467,13 @@ class EclipsingBinary(object):
 			#self.Ared[f] = extinction.fitzpatrick99(np.array([self.wavelength[f]*10.]), self.AV, self.RV, unit='aa')[0] #or ccm89
 			self.Ared[f] = ext(self.wavelength[f]*units.nm)*self.AV
 
-			#BCV = self.getFlowerBCV(self.T12)
-			BCf1 = self.SED.getBCf(self.T1*units.K, f)
-			BCf2 = self.SED.getBCf(self.T2*units.K, f)
-			self.L1f[f] = self.L1 * BCf1
-			self.L2f[f] = self.L2 * BCf2
-			self.absMagMean[f] = self.MbolSun - 2.5*np.log10(self.L1f[f] + self.L2f[f]) #This may not be strictly correct?  Should I be using the Sun's magnitude in the given filter? But maybe this is OK because, L1f and L2f are in units of LSun, which is related to the bolometric luminosity?
-			self.appMagMean[f] = self.absMagMean[f] + 5.*np.log10(self.dist*100.) + self.Ared[f]  #multiplying by 1000 to get to parsec units
-			#print(self.wavelength[f], BCf1, self.appMagMean[f], self.Ared[f])
+			self.Fv1[f] = self.SED.getFv(self.L1*units.solLum, self.T1*units.K, self.r1*units.solRad, self.dist*units.kpc, f)
+			self.Fv2[f] = self.SED.getFv(self.L2*units.solLum, self.T2*units.K, self.r2*units.solRad, self.dist*units.kpc, f)
+			Fv = self.Fv1[f] + self.Fv2[f]
+			self.appMagMean[f] = -2.5*np.log10(Fv/(3631.*units.Jansky)) + self.Ared[f] #AB magnitude 
+
+			#print(self.wavelength[f], self.appMagMean[f], self.Ared[f], self.T1)
+
 			self.LSS[f] = -999.
 			self.appMagMeanAll += self.appMagMean[f]
 		self.appMagMeanAll /= len(self.filters)
@@ -884,8 +888,6 @@ class SED(object):
 		self.filters = filters
 		self.filterThroughput = dict()
 
-		self.useQuad = False #could integrate with Quad, but that is very slow, gives warnings, and appears to give nearly identical results to the summation
-
 		self.BCf = dict()
 
 	def readFilters(self):
@@ -897,73 +899,80 @@ class SED(object):
 			#https://github.com/lsst/throughputs/tree/master/baseline
 			fname = self.filterFilesRoot + 'filter_'+f[0]+'.dat' 
 			df = pd.read_csv(fname, delim_whitespace=True, header=None, names=['w','t'], skiprows = 6)
+			df['nu'] = (constants.c/ (df['w'].values*units.nm)).to(units.Hz).value
 			wrng = df[(df['t'] > 0)]
 			wmin = min(wrng['w'])
 			wmax = max(wrng['w'])
-			self.filterThroughput[f] = {'w':df['w'].values, 't':df['t'].values, 'wmin':wmin, 'wmax':wmax}
+			numin = min(wrng['nu'])
+			numax = max(wrng['nu'])
+			df.sort_values(by='nu', inplace=True)
+			self.filterThroughput[f] = {'nu':df['nu'].values, 't':df['t'].values, 'numin':numin, 'numax':numax, 'wmin':wmin, 'wmax':wmax}
 
 	def bb(self, w, T):
-		#erg/s/cm^2/AA/steradian
+		#in cgs is the Ba / s
 		#expects w in nm but without a unit attached
 		w *= units.nm
-
 		Bl = 2.*constants.h*constants.c**2./w**5. / (np.exp( constants.h*constants.c / (w*constants.k_B*T)) -1.)
-		return Bl.decompose().cgs.value
+		return Bl.cgs.value
 
-	def bbFilter(self, w, T, filt):
 
-		fB = self.bb(w,T)
-		ft = np.interp(w, self.filterThroughput[filt]['w'], self.filterThroughput[filt]['t'])
+	#this return inf when integrated!
+	def bbv(self, nu, T):
+		#expects nu in 1/s, but without a unit attached
+		#return in g/s**2
+		nu *= units.Hz
+		Bl = 2.*constants.h/constants.c**2. *nu**3. / (np.exp( constants.h*nu / (constants.k_B*T)) -1.)
+		return Bl.cgs.value
+
+	def filter(self, nu, filt):
+		ft = np.interp(nu, self.filterThroughput[filt]['nu'], self.filterThroughput[filt]['t'])
+		return ft
+
+	def bbvFilter(self, nu, T, filt):
+		fB = self.bbv(nu,T)
+		ft = self.filter(nu, filt)
 		return fB*ft
 
+	def getFv(self, L, T, R, dist, filt, dw = 1e-4):
+		#http://burro.case.edu/Academics/Astr221/Light/blackbody.html
+		#F = sigma*T**4
+		#L = 4*pi**2 * R**2 * F
+		#Lv*dv = 4*pi**2 * R**2 * Bv*dv
+		#Fv*dv = Bv*dv
+
+		# def getConst(L, T):
+		# 	#integrating this over nu returns infs??!!
+		# 	fB, fB_err = quad(self.bb, 0, np.inf, args= (T,))
+		# 	fB *= units.Ba/units.s*units.nm
+		# 	# LB = 4.*np.pi**2.*R**2. * fB
+		# 	# print("L,LB = ",L, LB.to(units.solLum))
+		# 	A = (L/fB).decompose()
+		# 	return A
+
+		# A = getConst(L,T)
+		#print("A=",A)
+
+		#quad misses the filter, and just returns zero when given np.inf limits! and is slow.  So I will do the summation with a small dw
+		w = np.arange(self.filterThroughput[filt]['wmin'], self.filterThroughput[filt]['wmax'], dw)
+		nu = (constants.c/(w*units.nm)).to(units.Hz).value
+		# dnu = (constants.c/(w*units.nm)**2.*(dw*units.nm)).to(units.Hz).value
+		# f = np.sum(self.filter(nu,filt)*dnu) *units.Hz
+		# fBf = np.sum(self.bbvFilter(nu,T,filt)*dnu) *units.g/units.s**2 *units.Hz
+		f = np.sum(self.filter(nu,filt))
+		fBf = np.sum(self.bbvFilter(nu,T,filt)) *units.g/units.s**2 	
+
+		# fBv = fBf/f * A/(4.*np.pi**2.*dist**2.) 
+
+		fBv = fBf/f * R**2./dist**2. 
+
+		# print(f, fBf.to(units.Jansky), fBv.to(units.Jansky))
+
+		# mAB = -2.5*np.log10(fBv/(3631.*units.Jansky))
+		# print("mAB =", mAB)
+
+		return fBv
 
 
-	def getBCf(self, T, filt, wmin =10, wmax = 10000, dw = 0.1):
-
-		#could improve this with a Kurucz model
-		if (self.useQuad):
-			fB, fB_err = quad(self.bb, wmin, wmax, args= (T,))
-			fBf, fBf_err = quad(self.bbFilter, self.filterThroughput[filt]['wmin'], self.filterThroughput[filt]['wmax'], args= (T,filt))
-
-
-		else:
-			w = np.arange(wmin, wmax, dw)
-			fB = np.sum(self.bb(w,T))
-			fBf = np.sum(self.bbFilter(w,T,filt))
-
-			# a check
-			# print("sum", filt, fB, fBf, fBf/fB)
-			# fB, fB_err = quad(self.bb, wmin, wmax, args= (T,))
-			# fBf, fBf_err = quad(self.bbFilter, self.filterThroughput[filt]['wmin'], self.filterThroughput[filt]['wmax'], args= (T,filt))
-			# print("quad", filt, fB, fBf, fBf/fB)
-
-		return fBf/fB
-
-	def setBCf(self, T, wmin =10, wmax = 10000):
-
-		#could improve this with a Kurucz model
-
-		if (self.useQuad):
-			fB, fB_err = quad(self.bb, wmin, wmax, args= (T,))
-		else:			
-			fB = np.sum(self.bb(w,T))
-
-
-		for filt in self.filters:
-			if (self.useQuad):
-				fBf, fBf_err = quad(self.bbFilter, self.filterThroughput[filt]['wmin'], self.filterThroughput[filt]['wmax'], args= (T,filt))
-			else:
-				fBf = np.sum(self.bbFilter(w,T,filt))
-
-			self.BCf[f] = fBf/fB
-
-		#print(self.BCf)
-
-		# plt.plot(w,fn)
-		# for f in self.filters:
-		# 	plt.plot(self.filterThroughput[f]['w'], self.filterThroughput[f]['t'])
-		# plt.xlim(100, 2000)
-		# plt.show()
 
 ###########################################################################################################
 ###########################################################################################################
