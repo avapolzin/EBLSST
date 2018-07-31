@@ -507,7 +507,6 @@ class EclipsingBinary(object):
 			#self.Ared[f] = extinction.fitzpatrick99(np.array([self.wavelength[f]*10.]), self.AV, self.RV, unit='aa')[0] #or ccm89
 			self.Ared[f] = ext(self.wavelength[f]*units.nm)*self.AV
 
-
 			self.Fv1[f] = self.SED1.getFvAB(self.dist*units.kpc, f, Lconst = Lconst1)
 			self.Fv2[f] = self.SED2.getFvAB(self.dist*units.kpc, f, Lconst = Lconst2)
 			Fv = self.Fv1[f] + self.Fv2[f]
@@ -1074,7 +1073,7 @@ class SED(object):
 			self.specModelName = 'ck04models'
 			g = np.clip(self.logg, 3, 5.)
 			T = np.clip(self.T.to(units.K).value, 3500., 50000.0)
-			MH = np.clip(self.M_H, -4, 1) #not sure what the limits are here, but this seems reasonable
+			MH = np.clip(self.M_H, -4, 0.5) #not sure what the lower limit is here, but this seems reasonable
 			# else:
 			# 	#phoenix for cooler stars, but appear to be giving more discrepant results than just using the Kurucz model
 			# 	self.specModelName = 'phoenix'
@@ -1350,7 +1349,6 @@ class LSSTEBworker(object):
 		if (len(line) >= 17):
 			EB.M_H = line[16]
 
-		print(line, EB.Av, EB.M_H)
 
 		EB.t_zero = np.random.random() * EB.period
 
