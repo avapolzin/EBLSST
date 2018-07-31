@@ -63,6 +63,7 @@ class EclipsingBinary(object):
 		self.L2 = None #*units.solLum
 		self.period = None #*units.day 
 		self.eccentricity = None
+		self.OMEGA = None
 		self.omega = None
 		self.inclination = None
 		self.t_zero = None
@@ -1331,7 +1332,8 @@ class LSSTEBworker(object):
 		EB.period = 10.**line[2] #days
 		EB.eccentricity = line[3]
 		EB.inclination = line[12] *180./np.pi #degrees
-		EB.omega = line[13] #radians
+		EB.OMEGA = line[13] #radians
+		EB.omega = line[14] #radians
 
 		EB.dist = line[11] #kpc
 		if (self.TRILEGALmodel == None):
@@ -1343,10 +1345,12 @@ class LSSTEBworker(object):
 			EB.RA = self.OpSimRA[OpSimi]
 			EB.Dec = self.OpSimDec[OpSimi]
 
-		if (len(line) >= 15):
-			EB.AV = line[14]
 		if (len(line) >= 16):
-			EB.M_H = line[15]
+			EB.AV = line[15]
+		if (len(line) >= 17):
+			EB.M_H = line[16]
+
+		print(line, EB.Av, EB.M_H)
 
 		EB.t_zero = np.random.random() * EB.period
 

@@ -1,0 +1,2 @@
+curl ftp://ftp.obs-besancon.fr/ws-galmod/out/ws.AAAKXw.79fa8422da271a0f/output --output besancon_model.dat
+
