@@ -18,7 +18,6 @@ def define_args():
 	parser.add_argument("-a", "--n_band", 		type=int, help="Nterms_band input for gatspy [2]")
 	parser.add_argument("-b", "--n_base", 		type=int, help="Nterms_base input for gatspy [2]")
 	parser.add_argument("-s", "--seed", 		type=int, help="random seed []")
-	parser.add_argument("-p", "--plots", 		action='store_true', help="Set to create plots")
 	parser.add_argument("-v", "--verbose", 		action='store_true', help="Set to show verbose output")
 	parser.add_argument("-l", "--opsim", 		action='store_true', help="set to run LSST OpSim, else run nobs =")
 
@@ -55,7 +54,6 @@ def apply_args(worker, args):
 	if (args.n_base is not None):
 		worker.n_base = args.n_base
 
-	worker.do_plot = args.plots
 	worker.verbose = args.verbose
 	worker.doOpSim = args.opsim
 

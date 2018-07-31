@@ -1,27 +1,24 @@
 #!/software/anaconda3.6/bin/python
 
-from EBLSST import LSSTEBworker, BreivikGalaxy, TRILEGAL
+from EBLSST import LSSTEBworker, BreivikGalaxy
 import multiprocessing, logging
 import csv
 import argparse
 import numpy as np
 
 
-def define_args(parser):
+def define_args():
+	parser = argparse.ArgumentParser()
+
 	parser.add_argument("-n", "--n_cores", 		type=int, help="Number of cores [0]")
-	parser.add_argument("-c", "--n_bin", 		type=int, help="Number of binaries [100000]")
+	parser.add_argument("-c", "--n_bin", 		type=int, help="Number of binaries per process [100000]")
+	parser.add_argument("-i", "--gal_file", 	type=str, help="Galaxy input file name")
 	parser.add_argument("-o", "--output_file", 	type=str, help="output file name")
 	parser.add_argument("-a", "--n_band", 		type=int, help="Nterms_band input for gatspy [2]")
 	parser.add_argument("-b", "--n_base", 		type=int, help="Nterms_base input for gatspy [2]")
 	parser.add_argument("-s", "--seed", 		type=int, help="random seed []")
-	parser.add_argument("-p", "--plots", 		action='store_true', help="Set to create plots")
 	parser.add_argument("-v", "--verbose", 		action='store_true', help="Set to show verbose output")
-
-
-def apply_args(worker):
-
-	parser = argparse.ArgumentParser()
-	define_args(parser)
+	parser.add_argument("-l", "--opsim", 		action='store_true', help="set to run LSST OpSim, else run nobs =")
 
 	#https://docs.python.org/2/howto/argparse.html
 	args = parser.parse_args()
@@ -30,17 +27,23 @@ def apply_args(worker):
 	options = { k : opts[k] for k in opts if opts[k] != None }
 	print(options)
 
+	return args
+
+def apply_args(worker, args):
+
 	if (args.n_cores is not None):
 		worker.n_cores = args.n_cores
 	if (worker.n_cores > 1):
 		worker.do_parallel = True
-	else:
+	else:	
 		worker.n_cores = 1
 		worker.do_parallel = False 
 
 	if (args.n_bin is not None):
 		worker.n_bin = args.n_bin
 
+	if (args.gal_file is not None):
+		worker.GalaxyFile = args.gal_file
 		
 	if (args.output_file is not None):
 		worker.ofile = args.output_file
@@ -50,14 +53,12 @@ def apply_args(worker):
 	if (args.n_base is not None):
 		worker.n_base = args.n_base
 
-	worker.do_plot = args.plots
 	worker.verbose = args.verbose
+	worker.doOpSim = args.opsim
 
 	#set the random seed
 	if (args.seed is not None):
 		worker.seed = args.seed
-
-
 
 
 
@@ -67,6 +68,10 @@ if __name__ == "__main__":
 	worker = LSSTEBworker()
 	worker.initialize() #sets the random seed and reads in the filter files
 	#check for command-line arguments
+	args = define_args()
+	if (args.n_bin == None):
+		args.n_bin = 2
+
 	apply_args(worker)
 	worker.doOpSim = True
 
@@ -92,7 +97,7 @@ if __name__ == "__main__":
 	for i in usefields:
 		worker.makeTRILEGAL(i)
 
-		print(worker.TRILEGALmodel)
+		print(worker.gal.model)
 		raise
 		#NOW WE MATCH THE STARS TO KATIE's MODEL, need to set the distance and Av? from the TRILEGAL model
 

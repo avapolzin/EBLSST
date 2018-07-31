@@ -902,19 +902,33 @@ class TRILEGAL(object):
 		self.filterset = 'lsst' 
 		self.tmpfname = 'TRILEGAL_model.h5'
 
+		self.model = None
+		self.TRILEGAL_KDE = None
+
 		self.RA = None
 		self.Dec = None
 
 		self.shuffle = True
-	def getModel(self):
+
+	def setModel(self):
 		vespa.stars.trilegal.get_trilegal(self.tmpfname, self.RA, self.Dec, galactic=False, \
 			filterset=self.filterset, area=self.area, maglim=self.maglim, binaries=self.binaries, \
 			trilegal_version='1.6', sigma_AV=self.sigma_AV, convert_h5=True)
-		model = pd.read_hdf(self.tmpfname)
+		self.model = pd.read_hdf(self.tmpfname)
+
+		#add the distance
+		logDist = np.log10( 10.**(df['m-M0'].values/5.) *10. / 1000.) #log(d [kpc])
+		self.model['logDist'] = logDist
+
 		if (self.shuffle):
-			model.sample(frac=1).reset_index(drop=True)
+			self.model = self.model.sample(frac=1).reset_index(drop=True)
 		os.remove(self.tmpfname)
-		return model
+
+		data = np.vstack((self.model['logL'].values, self.model['logTe'].values, self.model['logg'].values, \
+						self.model['logDist'].values, self.model['Av'].values, self.model['[M/H]'].values))
+		self.TRILEGAL_KDE = scipy.stats.gaussian_kde(data)
+
+
 
 ###########################################################################################################
 ###########################################################################################################
@@ -1142,8 +1156,9 @@ class LSSTEBworker(object):
 		self.OpSimDec = None
 		self.OpSimNobs = None
 
-		self.TRILEGALmodel = None
-
+		self.gal = None #will hold TRILEGAL object
+		self.Breivik = None
+		
 		self.seed = None
 
 
@@ -1183,11 +1198,11 @@ class LSSTEBworker(object):
 			self.OpSimDec = np.append(self.OpSimDec, x[2])
 	
 	def makeTRILEGAL(self, i):
-		gal = TRILEGAL()
-		gal.RA = self.OpSimRA[i]
-		gal.Dec = self.OpSimDec[i]
-		gal.tmpfname = 'TRILEGAL_model_fID'+str(self.OpSimID[i])+'.h5'
-		self.TRILEGALmodel = gal.getModel()	
+		self.gal = TRILEGAL()
+		self.gal.RA = self.OpSimRA[i]
+		self.gal.Dec = self.OpSimDec[i]
+		self.gal.tmpfname = 'TRILEGAL_model_fID'+str(self.OpSimID[i])+'.h5'
+		self.gal.getModel()	
 
 	def make_gatspy_plots(self, j):
 		EB = self.return_dict[j]
