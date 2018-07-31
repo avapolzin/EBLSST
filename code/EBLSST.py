@@ -451,7 +451,7 @@ class EclipsingBinary(object):
 		self.f_s = np.sqrt(self.eccentricity)*np.sin(self.omega*np.pi/180.)
 		self.R_1 = (self.r1/self.a)
 		self.R_2 = (self.r2/self.a)
-		self.sbratio = self.L2/self.L1
+		self.sbratio = (self.L2/self.r2**2.)/(self.L1/self.r1**2.)
 		self.R_1e = self.r1/self.Eggleton_RL(self.m1/self.m2, self.a * (1. - self.eccentricity))
 		self.R_2e = self.r2/self.Eggleton_RL(self.m2/self.m1, self.a * (1. - self.eccentricity))
 
