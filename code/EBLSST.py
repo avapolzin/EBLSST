@@ -319,12 +319,12 @@ class EclipsingBinary(object):
 		ldc_2 = [a1_2, a2_2, a3_2, a4_2]
 		# print(ldc_1, ldc_2)
 		#light curve
-		self.period = 5
-		self.inclination = 90
-		self.R_1 = 0.05
-		self.R_2 = 0.05
-		self.sbratio = 1.
-		self.q = 1.
+		# self.period = 5
+		# self.inclination = 90
+		# self.R_1 = 0.05
+		# self.R_2 = 0.05
+		# self.sbratio = 1.
+		# self.q = 1.
 		# print(self.t_zero, self.period, self.a, self.q,
 		# 	self.R_1, self.R_2, self.inclination, self.sbratio)
 		#This is in arbitrary units... H ow do we get this into real units??
@@ -551,8 +551,8 @@ class BreivikGalaxy(object):
 
 	def __init__(self, *args,**kwargs):
 		self.verbose = False
-		self.GalaxyFile ='../input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
-		self.GalaxyFileLogPrefix ='../input/fixedPopLogCm_'
+		self.GalaxyFile ='../input/Breivik/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
+		self.GalaxyFileLogPrefix ='../input/Breivik/fixedPopLogCm_'
 
 		self.n_bin = 100000
 		self.n_cores = 4
@@ -1118,7 +1118,7 @@ class LSSTEBworker(object):
 		self.n_cores = 1
 
 		self.ofile = 'output_file.csv' #output file name
-		self.dbFile = '../db/minion_1016_sqlite.db' #for the OpSim database
+		self.dbFile = '../input/db/minion_1016_sqlite.db' #for the OpSim database
 		self.filterFilesRoot = '../input/filters/'
 		self.db = None
 		self.cursor = None
