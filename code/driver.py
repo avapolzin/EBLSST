@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
 	#define the worker
 	worker = LSSTEBworker()
-	worker.initialize() #sets the random seed and reads in the filter files
+	worker.dbFile = '../db/minion_1016_sqlite.db' #for the OpSim database	
 	#check for command-line arguments
 	args = define_args()
 	if (args.n_bin == None):
@@ -75,9 +75,9 @@ if __name__ == "__main__":
 	apply_args(worker)
 	worker.doOpSim = True
 
-	#get the OpSim fields
-	worker.dbFile = '../db/minion_1016_sqlite.db' #for the OpSim database	
-	worker.getAllOpSimFields()
+	worker.initialize() #set random seed and get all the fields in OpSim
+
+
 
 	#set up the multiprocessing return dict
 	manager = multiprocessing.Manager()

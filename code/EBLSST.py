@@ -122,6 +122,7 @@ class EclipsingBinary(object):
 
 		#for light curves
 		self.SED = None
+		self.OpSim = None
 		self.filters = filters
 		self.ld_1 = 'claret'
 		self.ld_2 = 'claret'
@@ -137,8 +138,6 @@ class EclipsingBinary(object):
 		self.deltaMag = dict()
 		self.maxDeltaMag = 0.
 		self.doOpSim = True
-		self.fieldCursor = None
-		self.summaryCursor = None
 		self.observable = True
 		self.appmag_failed = 0
 		self.incl_failed = 0
@@ -364,53 +363,6 @@ class EclipsingBinary(object):
 
 			self.deltaMag[filt] = abs(min(self.appMagObs[filt]) - max(self.appMagObs[filt]))
 
-	#For OpSim database
-	def getFieldID(self, myRA, myDEC, deglim = 3.5/2.):
-		#uses RA/Dec (from galactic coordinates) to return locatiom's fieldID according to OpSim
-		#field-of-view == 3.5-degree diameter (also returned with fieldFov key)
-
-		RA = self.fieldCursor[:,1].astype(float)
-		Dec = self.fieldCursor[:,2].astype(float)
-		dbCoord = SkyCoord(ra = RA*units.degree, dec = Dec*units.degree, frame='icrs')
-		inCoord = SkyCoord(ra = myRA*units.degree, dec = myDEC*units.degree, frame='icrs')
-
-		imin, sep2d, dist3d = inCoord.match_to_catalog_sky(dbCoord)
-
-		dbID = (self.fieldCursor[imin,0]).astype('int') 
-
-		mask = np.where(sep2d.to(units.degree).value > deglim)
-		#this check apparently isn't necessary because it looks like the entire sky is covered with fieldIDs, but I suppose some of these fieldIDs don't have any observation dates (in the northern hemisphere)
-		if (len(mask[0]) > 0):
-			print(mask[0])
-			print("WARNING: coordinate outside LSST FOV", myRA[mask], myDec[mask])
-			dbID[mask] = -999
-
-		if (self.verbose):
-			print("have Field ID", dbID)
-
-		return dbID
-
-	def getOpSimDates(self, filtin):
-		#matches FieldID to existing OpSim database ID and matches observation filters to get dates (in seconds since the start of the 
-		# survey)
-		FieldID = self.summaryCursor[:,0].astype('int')
-		date = self.summaryCursor[:,1].astype('float')
-		filt = self.summaryCursor[:,2]
-
-		posIDFilt = np.where(np.logical_and(FieldID == self.OpSimID, filt == filtin[:-1]))
-
-		if (self.verbose):
-			print("posIDFilt = ", posIDFilt, filtin)
-
-		OpSimdates = posIDFilt[0]
-
-		if (len(OpSimdates) < 1):
-			return [None]
-		else:
-			if (self.verbose):
-				print('OpSimdates =', OpSimdates)
-			dates = np.array([float(d) for d in date[OpSimdates] ])/86400. #converting seconds to days
-			return dates
 
 	def checkIfObservable(self):
 
@@ -524,13 +476,13 @@ class EclipsingBinary(object):
 		#if we're using OpSim, then get the field ID
 		#get the field ID number from OpSim where this binary would be observed
 		if (self.doOpSim and self.observable and self.OpSimID == None):
-			self.OpSimID = self.getFieldID(self.RA, self.Dec)
+			self.OpSim.setFieldID(self.RA, self.Dec)
 
 	def observe(self, filt):
 
 		#get the observation dates
 		if (self.doOpSim):
-			self.obsDates[filt] = self.getOpSimDates(filt)
+			self.obsDates[filt] = self.OpSim.getDates(filt)
 		else:
 			nobs = int(round(self.totaltime / (self.cadence * self.Nfilters)))
 			self.obsDates[filt] = np.sort(self.totaltime * np.random.random(size=nobs))
@@ -543,7 +495,106 @@ class EclipsingBinary(object):
 ###########################################################################################################
 ###########################################################################################################
 ###########################################################################################################
+class OpSim(object):
 
+	def __init__(self, *args,**kwargs):
+		self.dbFile = '../input/db/minion_1016_sqlite.db' #for the OpSim database
+
+		self.verbose = False
+		self.fieldCursor = None
+		self.summaryCursor = None
+
+		self.fieldID = None
+		self.RA = None
+		self.Dec = None
+		self.Nobs = None
+
+	#database manipulation
+	def getCursors(self):
+		#gets SQlite cursor to pull information from OpSim
+		#https://www.lsst.org/scientists/simulations/opsim/summary-table-column-descriptions-v335
+		#http://ops2.lsst.org/docs/current/architecture.html
+		db = sqlite3.connect(self.dbFile)
+		cursor = db.cursor()
+
+		cursor.execute("SELECT fieldid, expDate, filter FROM summary") 
+		self.summaryCursor = np.array(cursor.fetchall()) #NOTE: this takes a LONG time
+		print("have summary cursor.")
+
+		cursor.execute("SELECT fieldid, fieldra, fielddec FROM field")
+		self.fieldCursor = np.array(cursor.fetchall()) #NOTE: this takes a LONG time
+		print("have field cursor.")
+
+
+	#For OpSim database
+	def setFieldID(self, myRA, myDEC, deglim = 3.5/2.):
+		#uses RA/Dec (from galactic coordinates) to return locatiom's fieldID according to OpSim
+		#field-of-view == 3.5-degree diameter (also returned with fieldFov key)
+
+		RA = self.fieldCursor[:,1].astype(float)
+		Dec = self.fieldCursor[:,2].astype(float)
+		dbCoord = SkyCoord(ra = RA*units.degree, dec = Dec*units.degree, frame='icrs')
+		inCoord = SkyCoord(ra = myRA*units.degree, dec = myDEC*units.degree, frame='icrs')
+
+		imin, sep2d, dist3d = inCoord.match_to_catalog_sky(dbCoord)
+
+		dbID = (self.fieldCursor[imin,0]).astype('int') 
+
+		mask = np.where(sep2d.to(units.degree).value > deglim)
+		#this check apparently isn't necessary because it looks like the entire sky is covered with fieldIDs, but I suppose some of these fieldIDs don't have any observation dates (in the northern hemisphere)
+		if (len(mask[0]) > 0):
+			print(mask[0])
+			print("WARNING: coordinate outside LSST FOV", myRA[mask], myDec[mask])
+			dbID[mask] = -999
+
+		if (self.verbose):
+			print("have Field ID", dbID)
+
+		self.fieldID = dbID
+
+	def getDates(self, filtin):
+		#matches FieldID to existing OpSim database ID and matches observation filters to get dates (in seconds since the start of the 
+		# survey)
+		FieldID = self.summaryCursor[:,0].astype('int')
+		date = self.summaryCursor[:,1].astype('float')
+		filt = self.summaryCursor[:,2]
+
+		posIDFilt = np.where(np.logical_and(FieldID == self.fieldID, filt == filtin[:-1]))
+
+		if (self.verbose):
+			print("posIDFilt = ", posIDFilt, filtin)
+
+		OpSimdates = posIDFilt[0]
+
+		if (len(OpSimdates) < 1):
+			return [None]
+		else:
+			if (self.verbose):
+				print('OpSimdates =', OpSimdates)
+			dates = np.array([float(d) for d in date[OpSimdates] ])/86400. #converting seconds to days
+			return dates
+
+	def getAllOpSimFields(self):
+		print("getting OpSim fields...")
+		self.getCursors()
+		FieldID = self.summaryCursor[:,0].astype('int')
+		date = self.summaryCursor[:,1].astype('float')
+
+		self.fieldID = np.array([])
+		self.RA = np.array([])
+		self.Dec = np.array([])
+		self.Nobs = np.array([])
+		for x in self.fieldCursor:
+			inS = np.where(FieldID == int(x[0]))[0]
+			self.Nobs = np.append(self.Nobs, len(inS))
+			self.fieldID = np.append(self.fieldID, x[0])
+			self.RA = np.append(self.RA, x[1])
+			self.Dec = np.append(self.Dec, x[2])
+	
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
+###########################################################################################################
 
 #This is copied from Katie's GxRealizationThinDisk.py, but here we've created a Class
 #This will draw the binaries from the Galaxy realization
@@ -1134,8 +1185,6 @@ class LSSTEBworker(object):
 		self.ofile = 'output_file.csv' #output file name
 		self.dbFile = '../input/db/minion_1016_sqlite.db' #for the OpSim database
 		self.filterFilesRoot = '../input/filters/'
-		self.db = None
-		self.cursor = None
 
 		#dictionaries -- could be handled by the multiprocessing manager, redefined in driver
 		self.return_dict = dict()
@@ -1149,12 +1198,7 @@ class LSSTEBworker(object):
 		self.n_period_failed = 0
 		self.n_radius_failed = 0
 
-
-		#from OpSim
-		self.OpSimID = None
-		self.OpSimRA = None
-		self.OpSimDec = None
-		self.OpSimNobs = None
+		self.OpSim = None #will hold the OpSim object
 
 		self.gal = None #will hold TRILEGAL object
 		self.Breivik = None
@@ -1162,46 +1206,13 @@ class LSSTEBworker(object):
 		self.seed = None
 
 
-	#database manipulation
-	def getCursors(self):
-		#gets SQlite cursor to pull information from OpSim
-		#https://www.lsst.org/scientists/simulations/opsim/summary-table-column-descriptions-v335
-		#http://ops2.lsst.org/docs/current/architecture.html
-		self.db = sqlite3.connect(self.dbFile)
-		cursor = self.db.cursor()
-
-		cursor.execute("SELECT fieldid, expDate, filter FROM summary") 
-		self.summaryCursor = np.array(cursor.fetchall()) #NOTE: this takes a LONG time
-		print("have summary cursor.")
-
-		cursor.execute("SELECT fieldid, fieldra, fielddec FROM field")
-		self.fieldCursor = np.array(cursor.fetchall()) #NOTE: this takes a LONG time
-		print("have field cursor.")
 
 
-
-	def getAllOpSimFields(self):
-		print("getting OpSim fields...")
-		self.getCursors()
-		FieldID = self.summaryCursor[:,0].astype('int')
-		date = self.summaryCursor[:,1].astype('float')
-
-		self.OpSimID = np.array([])
-		self.OpSimRA = np.array([])
-		self.OpSimDec = np.array([])
-		self.OpSimNobs = np.array([])
-		for x in self.fieldCursor:
-			inS = np.where(FieldID == int(x[0]))[0]
-			self.OpSimNobs = np.append(self.OpSimNobs, len(inS))
-			self.OpSimID = np.append(self.OpSimID, x[0])
-			self.OpSimRA = np.append(self.OpSimRA, x[1])
-			self.OpSimDec = np.append(self.OpSimDec, x[2])
-	
 	def makeTRILEGAL(self, i):
 		self.gal = TRILEGAL()
-		self.gal.RA = self.OpSimRA[i]
-		self.gal.Dec = self.OpSimDec[i]
-		self.gal.tmpfname = 'TRILEGAL_model_fID'+str(self.OpSimID[i])+'.h5'
+		self.gal.RA = self.OpSim.RA[i]
+		self.gal.Dec = self.OpSim.Dec[i]
+		self.gal.tmpfname = 'TRILEGAL_model_fID'+str(self.OpSim.FieldID[i])+'.h5' 
 		self.gal.getModel()	
 
 	def make_gatspy_plots(self, j):
@@ -1356,8 +1367,8 @@ class LSSTEBworker(object):
 			EB.yGx = line[9] 
 			EB.zGx = line[10] 
 		else:
-			EB.RA = self.OpSimRA[OpSimi]
-			EB.Dec = self.OpSimDec[OpSimi]
+			EB.RA = self.OpSim.RA[OpSimi]
+			EB.Dec = self.OpSim.Dec[OpSimi]
 
 		if (len(line) >= 16):
 			EB.AV = line[15]
@@ -1375,8 +1386,7 @@ class LSSTEBworker(object):
 		EB.Nfilters = len(self.filters)
 		EB.verbose = self.verbose
 		if (self.doOpSim):
-			EB.summaryCursor = self.summaryCursor
-			EB.fieldCursor = self.fieldCursor
+			EB.OpSim = self.OpSim
 		EB.initialize()
 
 		#some counters for how many EBs we could potentially observe with LSST
@@ -1408,4 +1418,9 @@ class LSSTEBworker(object):
 		else:
 			np.random.seed(seed = self.seed)
 
+		if (self.doOpSim):
+			self.Opsim = OpSim()
+			#get the OpSim fields
+			self.OpSim.getAllOpSimFields()
+			
 
