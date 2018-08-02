@@ -121,7 +121,7 @@ if __name__ == "__main__":
 	OpS.NobsDates = np.full_like(OpS.RA, dict(), dtype=dict)
 	OpS.totalNobs = np.full_like(OpS.RA, 0)
 	worker.OpSim = OpS
-	worker.OpSim.verbose = True
+	#worker.OpSim.verbose = True
 
 	for i in range(len(fields)):
 		#initialize
