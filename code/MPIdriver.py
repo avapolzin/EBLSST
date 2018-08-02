@@ -118,7 +118,8 @@ if __name__ == "__main__":
 	OpS.RA = fields[1]
 	OpS.Dec = fields[2]
 	OpS.obsDates = np.full_like(OpS.RA, dict(), dtype=dict)
-	OpS.NobsDates = np.full_like(OpS.RA, 0)
+	OpS.NobsDates = np.full_like(OpS.RA, dict(), dtype=dict)
+	OpS.totalNobs = np.full_like(OpS.RA, 0)
 	worker.OpSim = OpS
 	worker.OpSim.verbose = True
 
@@ -126,7 +127,7 @@ if __name__ == "__main__":
 		#initialize
 		passed = worker.initialize(OpSimi=i) #Note: this will not redo the OpSim class, because we've set it above
 
-		#set up the output file (NEED TO ADD THE FIELD INFORMATION HERE!!)
+		#set up the output file
 		worker.ofile = 'output_files/'+str(int(worker.OpSim.fieldID[i])).zfill(4) + worker.ofile
 		csvfile = open(worker.ofile, 'wt')	
 		worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)

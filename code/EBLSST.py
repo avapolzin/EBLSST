@@ -1623,6 +1623,14 @@ class LSSTEBworker(object):
 			#get the OpSim fields
 			self.OpSim.getAllOpSimFields()
 
+		#still want galaxy to get total number of stars, even if we're not observing it
+		if (self.Galaxy == None):
+			self.Galaxy = TRILEGAL()
+			self.Galaxy.RA = self.OpSim.RA[OpSimi]
+			self.Galaxy.Dec = self.OpSim.Dec[OpSimi]
+			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(int(self.OpSim.fieldID[OpSimi]))+'.h5' 
+			self.Galaxy.setModel()	
+
 		#check if we need to run this
 		if (self.useOpSimDates):
 			self.OpSim.setDates(OpSimi, self.filters)
@@ -1630,12 +1638,6 @@ class LSSTEBworker(object):
 			if (self.OpSim.totalNobs[OpSimi] < self.NobsLim):
 				return False
 
-		if (self.Galaxy == None):
-			self.Galaxy = TRILEGAL()
-			self.Galaxy.RA = self.OpSim.RA[OpSimi]
-			self.Galaxy.Dec = self.OpSim.Dec[OpSimi]
-			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(int(self.OpSim.fieldID[OpSimi]))+'.h5' 
-			self.Galaxy.setModel()	
 
 		if (self.Breivik == None):
 			self.Breivik = BreivikGalaxy()
