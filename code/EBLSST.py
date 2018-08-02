@@ -1254,7 +1254,7 @@ class LSSTEBworker(object):
 		self.n_radius_failed = 0
 
 		self.NobsLim = 10 #limit total number of obs below which we will not run it through anything (in initialize)
-		
+
 		self.OpSim = None #will hold the OpSim object
 		self.Galaxy = None #will hold TRILEGAL object
 		self.Breivik = None
@@ -1623,6 +1623,7 @@ class LSSTEBworker(object):
 			#get the OpSim fields
 			self.OpSim.getAllOpSimFields()
 			self.OpSim.setDates(OpSimi, self.filters)
+			print(f'total number of OpSim observation dates (all filters) = {self.OpSim.totalNobs[OpSimi]}')
 			if (self.OpSim.totalNobs[OpSimi] < self.NobsLim):
 				return False
 

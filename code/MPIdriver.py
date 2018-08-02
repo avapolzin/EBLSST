@@ -88,7 +88,7 @@ if __name__ == "__main__":
 	#now reshape again to get back to the right format
 	fieldData = np.reshape(recvbuf, (nfieldsPerCore, 3))	
 
-	print("rank", rank, fieldData)
+	#print("rank", rank, fieldData)
 
 	#add on any extra fields to rank =0
 	if (rank == 0):
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 	OpS.RA = fields[1]
 	OpS.Dec = fields[2]
 	OpS.obsDates = np.full_like(OpS.RA, dict(), dtype=dict)
-	OpS.NobsDates = np.full_like(OpS.RA, dict(), dtype=dict)
+	OpS.NobsDates = np.full_like(OpS.RA, 0)
 	worker.OpSim = OpS
 	worker.OpSim.verbose = True
 
@@ -131,7 +131,7 @@ if __name__ == "__main__":
 		csvfile = open(worker.ofile, 'wt')	
 		worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-		
+
 		#write header
 		worker.writeOutputLine(None, OpSimi=i, header=True)
 		csvfile.flush()
