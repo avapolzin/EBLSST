@@ -18,7 +18,7 @@ def define_args():
 	parser.add_argument("-b", "--n_base", 		type=int, help="Nterms_base input for gatspy [2]")
 	parser.add_argument("-s", "--seed", 		type=int, help="random seed []")
 	parser.add_argument("-v", "--verbose", 		action='store_true', help="Set to show verbose output")
-	parser.add_argument("-l", "--opsim", 		action='store_true', help="set to run LSST OpSim, else run nobs =")
+	parser.add_argument("-l", "--opsim", 		action='store_true', help="set to use LSST OpSim dates, else run nobs =")
 
 	#https://docs.python.org/2/howto/argparse.html
 	args = parser.parse_args()
@@ -54,7 +54,7 @@ def apply_args(worker, args):
 		worker.n_base = args.n_base
 
 	worker.verbose = args.verbose
-	worker.doOpSim = args.opsim
+	worker.useOpSimDates = args.opsim
 
 	#set the random seed
 	if (args.seed is not None):
@@ -66,18 +66,15 @@ if __name__ == "__main__":
 
 	#define the worker
 	worker = LSSTEBworker()
-	worker.dbFile = '../db/minion_1016_sqlite.db' #for the OpSim database	
+	worker.dbFile = '/Users/ageller/WORK/LSST/onGitHub/EBLSST/input/db/minion_1016_sqlite.db' #for the OpSim database	
 	#check for command-line arguments
 	args = define_args()
 	if (args.n_bin == None):
 		args.n_bin = 2
 
 	apply_args(worker)
-	worker.doOpSim = True
 
 	worker.initialize() #set random seed and get all the fields in OpSim
-
-
 
 	#set up the multiprocessing return dict
 	manager = multiprocessing.Manager()

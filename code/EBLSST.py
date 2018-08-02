@@ -37,6 +37,7 @@ import ellc
 import gatspy
 from gatspy import datasets, periodic
 from gatspy.periodic import LombScargleMultiband, LombScargle, LombScargleFast, LombScargleMultibandFast
+import emcee
 
 #for TRILEGAL and maybe also A_V
 import vespa
@@ -137,7 +138,7 @@ class EclipsingBinary(object):
 		self.appMagObsErr = dict()
 		self.deltaMag = dict()
 		self.maxDeltaMag = 0.
-		self.doOpSim = True
+		self.useOpSimDates = True
 		self.observable = True
 		self.appmag_failed = 0
 		self.incl_failed = 0
@@ -475,13 +476,13 @@ class EclipsingBinary(object):
 
 		#if we're using OpSim, then get the field ID
 		#get the field ID number from OpSim where this binary would be observed
-		if (self.doOpSim and self.observable and self.OpSimID == None):
+		if (self.useOpSimDates and self.observable and self.OpSimID == None):
 			self.OpSim.setFieldID(self.RA, self.Dec)
 
 	def observe(self, filt):
 
 		#get the observation dates
-		if (self.doOpSim):
+		if (self.useOpSimDates):
 			self.obsDates[filt] = self.OpSim.getDates(filt)
 		else:
 			nobs = int(round(self.totaltime / (self.cadence * self.Nfilters)))
@@ -602,8 +603,8 @@ class BreivikGalaxy(object):
 
 	def __init__(self, *args,**kwargs):
 		self.verbose = False
-		self.GalaxyFile ='../input/Breivik/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
-		self.GalaxyFileLogPrefix ='../input/Breivik/fixedPopLogCm_'
+		self.GalaxyFile = '../input/Breivik/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
+		self.GalaxyFileLogPrefix = '../input/Breivik/fixedPopLogCm_'
 
 		self.n_bin = 100000
 		self.n_cores = 4
@@ -614,7 +615,24 @@ class BreivikGalaxy(object):
 		self.fixedPop = None
 		self.sampleKernel = None
 
-	def getKernel(self):
+		self.datMinMax = dict()
+
+	def setMinMax(self):
+		def paramMinMax(dat):
+			if (not isinstance(min(dat), str)):
+				datMin = min(dat)-0.0001
+				datMax = max(dat)+0.0001
+
+				return [datMin, datMax]
+			else:
+				return [None, None]
+
+		for x in list(self.fixedPop.keys()):
+			self.datMinMax[x] = paramMinMax(self.fixedPop[x])
+
+
+	def setKernel(self):
+		print("getting Breivik kernel")
 
 		def paramTransform(dat):
 			datMin = min(dat)-0.0001
@@ -647,8 +665,6 @@ class BreivikGalaxy(object):
 		geo_mass = G/c**2
 		m_in_AU = 1.496*10**11.0
 
-
-		
 		mTotDisk = 2.15*10**10
 
 		##############################################################################
@@ -718,6 +734,7 @@ class BreivikGalaxy(object):
 		self.fixedPop['logr1'] = self.fixedPop['rad_1']
 		self.fixedPop['logr2'] = self.fixedPop['rad_2']
 		self.fixedPop['logp'] = np.log10(self.fixedPop['porb'])
+		self.setMinMax()
 
 		m1Trans = ss.logit(paramTransform(self.fixedPop['m1']))
 		bwM1 = astroStats.scott_bin_width(m1Trans)
@@ -905,7 +922,7 @@ class BreivikGalaxy(object):
 
 	def LSSTsim(self):
 
-		self.getKernel()		
+		self.setKernel()		
 				
 		# CALL THE MONTE CARLO GALAXY SAMPLE CODE
 		##############################################################################
@@ -954,21 +971,23 @@ class TRILEGAL(object):
 		self.tmpfname = 'TRILEGAL_model.h5'
 
 		self.model = None
-		self.TRILEGAL_KDE = None
+		self.KDE = None
 
 		self.RA = None
 		self.Dec = None
+		self.fieldID = None
 
 		self.shuffle = True
 
 	def setModel(self):
+		print(f'downloading TRILEGAL model for RA={self.RA}, DEC={self.Dec}')
 		vespa.stars.trilegal.get_trilegal(self.tmpfname, self.RA, self.Dec, galactic=False, \
 			filterset=self.filterset, area=self.area, maglim=self.maglim, binaries=self.binaries, \
 			trilegal_version='1.6', sigma_AV=self.sigma_AV, convert_h5=True)
 		self.model = pd.read_hdf(self.tmpfname)
 
 		#add the distance
-		logDist = np.log10( 10.**(df['m-M0'].values/5.) *10. / 1000.) #log(d [kpc])
+		logDist = np.log10( 10.**(self.model['m-M0'].values/5.) *10. / 1000.) #log(d [kpc])
 		self.model['logDist'] = logDist
 
 		if (self.shuffle):
@@ -977,7 +996,7 @@ class TRILEGAL(object):
 
 		data = np.vstack((self.model['logL'].values, self.model['logTe'].values, self.model['logg'].values, \
 						self.model['logDist'].values, self.model['Av'].values, self.model['[M/H]'].values))
-		self.TRILEGAL_KDE = scipy.stats.gaussian_kde(data)
+		self.KDE = scipy.stats.gaussian_kde(data)
 
 
 
@@ -1165,7 +1184,7 @@ class LSSTEBworker(object):
 		#NOTE: these need to be defined on the command line.  The default, if not defined, will be False
 		self.do_plot = False 
 		self.verbose = False
-		self.doOpSim = False
+		self.useOpSimDate = True
 
 		self.useFast = True
 		self.doLSM = True
@@ -1185,6 +1204,8 @@ class LSSTEBworker(object):
 		self.ofile = 'output_file.csv' #output file name
 		self.dbFile = '../input/db/minion_1016_sqlite.db' #for the OpSim database
 		self.filterFilesRoot = '../input/filters/'
+		self.GalaxyFile ='../input/Breivik/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
+		self.GalaxyFileLogPrefix ='../input/Breivik/fixedPopLogCm_'
 
 		#dictionaries -- could be handled by the multiprocessing manager, redefined in driver
 		self.return_dict = dict()
@@ -1200,20 +1221,18 @@ class LSSTEBworker(object):
 
 		self.OpSim = None #will hold the OpSim object
 
-		self.gal = None #will hold TRILEGAL object
+		self.Galaxy = None #will hold TRILEGAL object
 		self.Breivik = None
-		
+		self.BreivikGal = None
+
 		self.seed = None
 
-
-
-
-	def makeTRILEGAL(self, i):
-		self.gal = TRILEGAL()
-		self.gal.RA = self.OpSim.RA[i]
-		self.gal.Dec = self.OpSim.Dec[i]
-		self.gal.tmpfname = 'TRILEGAL_model_fID'+str(self.OpSim.FieldID[i])+'.h5' 
-		self.gal.getModel()	
+		#for emcee 
+		self.emcee_nthreads = 1 #note: currently, I *think* this won't work with >1 thread.  Not pickleable as written.
+		self.emcee_nsamples = 2000
+		self.emcee_nwalkers = 100
+		self.emcee_nburn = 100
+		self.emcee_sampler = None
 
 	def make_gatspy_plots(self, j):
 		EB = self.return_dict[j]
@@ -1379,13 +1398,13 @@ class LSSTEBworker(object):
 		EB.t_zero = np.random.random() * EB.period
 
 		#for observations
-		EB.doOpSim = self.doOpSim
+		EB.useOpSimDate = self.useOpSimDates
 		EB.years = self.years
 		EB.totaltime = self.totaltime 
 		EB.cadence= self.cadence 
 		EB.Nfilters = len(self.filters)
 		EB.verbose = self.verbose
-		if (self.doOpSim):
+		if (self.useOpSimDates):
 			EB.OpSim = self.OpSim
 		EB.initialize()
 
@@ -1412,15 +1431,163 @@ class LSSTEBworker(object):
 			output.append(EB.LSM) 
 			self.csvwriter.writerow(output)	
 
-	def initialize(self):
+
+	def matchBreivikTRILEGAL(self):
+
+		print("matching Breivik to TRILEGAL")
+		# compute the log likelihood
+		def lnlike(theta, logm1, logr1, logL1, pT):
+			logm2, logr2, logL2, ecc, logp = theta
+			
+			def paramTransform(key, val):
+				datMin = self.Breivik.datMinMax[key][0]
+				datMax = self.Breivik.datMinMax[key][1]
+						
+				return (val - datMin)/(datMax-datMin)
+			
+		#NOTE: this is confusing, but in g.fixedPop rad and lum are already in the log! 
+		#And here I have already transformed porb to logP
+			m1Trans = ss.logit(paramTransform('m1', 10.**logm1))
+			m2Trans = ss.logit(paramTransform('m2', 10.**logm2))
+			r1Trans = ss.logit(paramTransform('logr1', logr1))
+			r2Trans = ss.logit(paramTransform('logr2', logr2))
+			L1Trans = ss.logit(paramTransform('logL1', logL1))
+			L2Trans = ss.logit(paramTransform('logL2', logL2))
+			pTrans = ss.logit(paramTransform('logp', logp))
+			eccTrans = np.clip(ecc, 1e-4, 0.999)
+				
+			pB = self.Breivik.sampleKernel( (m1Trans, m2Trans, pTrans, eccTrans, r1Trans, r2Trans, L1Trans, L2Trans) )
+			lk = pB# * pT
+			
+			if (lk <= 0):
+				return -np.inf
+			
+			return np.log(lk).squeeze()
+
+		# compute the log prior
+		def lnprior(theta):
+			#some reasonable limits to place, so that Breivik's KDE can be sampled properly
+			logm2, logr2, logL2, ecc, logp = theta
+			if ( (-2 < logm2 < 2) and (-3 < logr2 < 3) and (-5 < logL2 < 5) and (0 < ecc < 1) and (-3 < logp < 10)):
+				return 0.0
+			return -np.inf
+
+		# compute the log of the likelihood multiplied by the prior
+		def lnprob(theta):
+			lnp = lnprior(theta)
+			
+			#get the primary star from the TRILEGAL model
+			sample = self.Galaxy.KDE.resample(size=1)
+			logL1 = sample[0,0]
+			logT1 = sample[1,0]
+			logg1 = sample[2,0]
+			logD = sample[3,0]
+			Av = sample[4,0]
+			MH = sample[5,0]
+			pT = self.Galaxy.KDE( (logL1, logT1, logg1, logD, Av, MH) )
+
+			logr1 = 2.*(0.25*logL1 - logT1 + 3.762) #taken from my N-body notes to get logT <-- from Jarrod Hurley
+			
+			#np.log10(constants.G.to(u.cm**3. / u.g / u.s**2.).value) = -7.175608591905032
+			#print(np.log10((1.*u.solMass).to(u.g).value)) = 33.29852022592346
+			logm1 = logg1 + 7.175608591905032 + 2.*(logr1 + 10.84242200335765) - 33.29852022592346
+
+			lnl = lnlike(theta, logm1, logr1, logL1, pT)
+			
+			if (not np.isfinite(lnp) or not np.isfinite(lnl)):
+				#return -np.inf, np.array([0., 0., 0., 0., 0., 0.])
+				return -np.inf, np.array([None, None, None, None, None, None])
+
+			#returning the TRILEGAL parameters as "blobs" so that I can1 use them later
+			return lnp + lnl, np.array([Av, MH, logD, logm1, logr1, logL1])
+
+		#now set up the emcee	
+
+
+		paramsNames = ['m2', 'r2', 'L2', 'ecc', 'logp']
+		outNames = ['logm2', 'logr2', 'logL2', 'ecc', 'logp']
+		reNames = {}
+		for x,y in zip(paramsNames, outNames):
+			reNames[x] = y
+
+		BreivikBin = self.Breivik.GxSample(int(self.emcee_nwalkers))
+
+		#take the log of m2 and rename the columns accordingly
+		walkers = pd.concat( [BreivikBin[paramsNames[0]].apply(np.log10), 
+							  BreivikBin[paramsNames[1]].apply(np.log10),
+							  BreivikBin[paramsNames[2]].apply(np.log10),
+							  BreivikBin[paramsNames[3:]] 
+							 ], axis=1)
+		walkers.rename(columns = reNames, inplace=True)
+
+		print(f'running emcee with nwalkers={self.emcee_nwalkers}, nsamples={self.emcee_nsamples}, nthreads={self.emcee_nthreads}, ')
+		self.emcee_sampler = emcee.EnsembleSampler(self.emcee_nwalkers, len(outNames), lnprob, threads = self.emcee_nthreads)
+
+		#this will run it through emcee
+		foo = self.emcee_sampler.run_mcmc(walkers.values, self.emcee_nsamples)
+
+		#now gather the output
+		outNames = ['logm2', 'logr2', 'logL2', 'ecc', 'logp']
+		samples = self.emcee_sampler.chain[:, nburn:, :].reshape((-1, len(outNames)))
+		blobs = np.array(self.emcee_sampler.blobs[nburn:][:][:])
+		extras = blobs.reshape((samples.shape[0], blobs.shape[-1]))
+		result = np.hstack((extras, samples))
+
+		self.BreivikGal = result
+
+
+	def sampleBreivikGal(self, Nsample=1):
+		Nsample = 1000
+		indices = np.random.randint(0, high=len(self.BreivikGal), size=Nsample)
+		s = self.BreivikGal[indices].T
+		#outNames = ['Av', '[M/H]', 'logD', logm1', 'logr1', 'logL1', 'logm2', 'logr2', 'logL2', 'ecc', 'logp']
+
+		Av = s[0]
+		MH = s[1]
+		d = 10.**s[2]
+		m1 = 10.**s[3]
+		r1 = 10.**s[4]
+		L1 = 10.**s[5]
+		m2 = 10.**s[6]
+		r2 = 10.**s[7]
+		L2 = 10.**s[8]
+		ecc = s[9]
+		logp = s[10]
+		inc = np.arccos(2.*np.random.uniform(0,1.0,Nsample) - 1.)
+		omega = np.random.uniform(0,2*np.pi,Nsample)
+		OMEGA = np.random.uniform(0,2*np.pi,Nsample)
+		x = np.zeros(Nsample)
+
+		#we don't need position, but we do need distance
+		#[m1, m2, logp, ecc, r1, r2, L1, L2, x,y,z, dist, inc, OMEGA, omega, Av, MH]
+		#binDat = np.vstack((m1, m2, logp, ecc, rad1, rad2, Lum1, Lum2, xGX, yGX, zGX, dist_kpc, inc, OMEGA, omega)).T
+
+		return np.vstack( (m1, m2, logp, ecc, r1, r2, L1, L2, x, x, x, d, inc, OMEGA, omega, Av, MH) ).T
+
+	def initialize(self, i=0):
 		if (self.seed == None):
 			np.random.seed()
 		else:
 			np.random.seed(seed = self.seed)
 
-		if (self.doOpSim):
-			self.Opsim = OpSim()
+
+		if (self.OpSim == None):
+			self.OpSim = OpSim()
 			#get the OpSim fields
 			self.OpSim.getAllOpSimFields()
-			
+		
+		if (self.Galaxy == None):
+			self.Galaxy = TRILEGAL()
+			self.Galaxy.RA = self.OpSim.RA[i]
+			self.Galaxy.Dec = self.OpSim.Dec[i]
+			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(self.OpSim.fieldID[i])+'.h5' 
+			self.Galaxy.setModel()	
 
+		if (self.Breivik == None):
+			self.Breivik = BreivikGalaxy()
+			self.Breivik.GalaxyFile = self.GalaxyFile
+			self.Breivik.GalaxyFileLogPrefix = self.GalaxyFileLogPrefix
+			self.Breivik.setKernel()
+
+		if (self.BreivikGal == None):
+			self.matchBreivikTRILEGAL()
