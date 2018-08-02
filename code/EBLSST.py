@@ -145,6 +145,7 @@ class EclipsingBinary(object):
 		self.period_failed = 0
 		self.radius_failed = 0
 		self.OpSimID = None
+		self.OpSimi = 0
 		self.years = 10.
 		self.totaltime = 365.* self.years
 		self.cadence = 3.
@@ -483,7 +484,15 @@ class EclipsingBinary(object):
 
 		#get the observation dates
 		if (self.useOpSimDates):
-			self.obsDates[filt] = self.OpSim.getDates(filt)
+			#check if we already have the observing dates
+			if (self.OpSim != None):
+				if (filt in self.OpSim.obsDates[self.OpSimi]):
+					self.obsDates[filt] = self.OpSim.obsDates[self.OpSimi][filt]
+
+			#otherwise get them
+			if (filt not in self.ObsDates):
+				self.obsDates[filt] = self.OpSim.getDates(filt)
+				
 			if (self.verbose):
 				print(f'observing with OpSim in filter {filt}, have {len(self.obsDates[filt])} observations')
 		else:
@@ -576,6 +585,13 @@ class OpSim(object):
 				print('OpSimdates =', OpSimdates)
 			dates = np.array([float(d) for d in date[OpSimdates] ])/86400. #converting seconds to days
 			return dates
+
+	def setDates(self, i, filters):
+		self.obsDates[i] = dict()
+		for filt in filters:
+			self.obsDates[i][filt] = self.getDates(filt)
+			if (self.verbose):
+				print(f'observing with OpSim in filter {filt}, have {len(self.obsDates[i][filt])} observations')
 
 	def getAllOpSimFields(self):
 		print("getting OpSim fields...")
@@ -1295,6 +1311,7 @@ class LSSTEBworker(object):
 
 		f.savefig("lc_gatspy_fig_"+str(seed).rjust(10,'0')+".png", bbox_inches='tight')
 
+
 	def run_ellc_gatspy(self, j):
 		#this is the general simulation - ellc light curves and gatspy periodograms
 
@@ -1391,6 +1408,7 @@ class LSSTEBworker(object):
 			EB.yGx = line[9] 
 			EB.zGx = line[10] 
 		else:
+			EB.OpSimi = OpSimi
 			EB.RA = self.OpSim.RA[OpSimi]
 			EB.Dec = self.OpSim.Dec[OpSimi]
 

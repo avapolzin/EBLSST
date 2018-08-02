@@ -118,9 +118,10 @@ if __name__ == "__main__":
 	OpS.RA = fields[1]
 	OpS.Dec = fields[2]
 	worker.OpSim = OpS
-
+	worker.OpSim.verbose = True
 
 	for i in range(len(fields)):
+		worker.OpSim.setDates(i, worker.filters)
 
 		#set up the output file (NEED TO ADD THE FIELD INFORMATION HERE!!)
 		worker.ofile = 'output_files/'+str(int(worker.OpSim.fieldID[i])).zfill(4) + worker.ofile
