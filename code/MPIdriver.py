@@ -100,6 +100,8 @@ if __name__ == "__main__":
 	#define the worker
 	worker = LSSTEBworker()
 	worker.filterFilesRoot = '/projects/p30137/ageller/EBLSST/input/filters/'
+	worker.GalaxyFile = '/projects/p30137/ageller/EBLSST/input/Breivik/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
+	worker.GalaxyFileLogPrefix ='/projects/p30137/ageller/EBLSST/input/Breivik/fixedPopLogCm_'
 	#check for command-line arguments
 	apply_args(worker, args)	
 	if (worker.seed == None):
@@ -121,7 +123,7 @@ if __name__ == "__main__":
 	#worker.doLSM = False
 
 	print(worker.BreivikGal)
-	
+
 	raise
 
 	#set up the output file
