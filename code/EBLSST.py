@@ -484,6 +484,8 @@ class EclipsingBinary(object):
 		#get the observation dates
 		if (self.useOpSimDates):
 			self.obsDates[filt] = self.OpSim.getDates(filt)
+			if (self.verbose):
+				print(f'observing with OpSim in filter {filt}, have {len(self.obsDates[filt])} observations')
 		else:
 			nobs = int(round(self.totaltime / (self.cadence * self.Nfilters)))
 			self.obsDates[filt] = np.sort(self.totaltime * np.random.random(size=nobs))
@@ -1562,7 +1564,7 @@ class LSSTEBworker(object):
 		#[m1, m2, logp, ecc, r1, r2, L1, L2, x,y,z, dist, inc, OMEGA, omega, Av, MH]
 		#binDat = np.vstack((m1, m2, logp, ecc, rad1, rad2, Lum1, Lum2, xGX, yGX, zGX, dist_kpc, inc, OMEGA, omega)).T
 
-		return np.vstack( (m1, m2, logp, ecc, r1, r2, L1, L2, x, x, x, d, inc, OMEGA, omega, Av, MH) ).T
+		return (np.vstack( (m1, m2, logp, ecc, r1, r2, L1, L2, x, x, x, d, inc, OMEGA, omega, Av, MH) ).T).squeeze()
 
 	def initialize(self, i=0):
 		if (self.seed == None):
