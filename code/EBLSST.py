@@ -981,7 +981,7 @@ class TRILEGAL(object):
 		self.shuffle = True
 
 	def setModel(self):
-		print(f'downloading TRILEGAL model for RA={self.RA}, DEC={self.Dec}')
+		print(f'downloading TRILEGAL model for ID={self.fieldID}, RA={self.RA}, DEC={self.Dec}')
 		vespa.stars.trilegal.get_trilegal(self.tmpfname, self.RA, self.Dec, galactic=False, \
 			filterset=self.filterset, area=self.area, maglim=self.maglim, binaries=self.binaries, \
 			trilegal_version='1.6', sigma_AV=self.sigma_AV, convert_h5=True)
