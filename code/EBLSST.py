@@ -604,7 +604,6 @@ class OpSim(object):
 		self.RA = np.array([])
 		self.Dec = np.array([])
 		self.Nobs = np.array([])
-		self.obsDates = np.array([])
 
 		for x in self.fieldCursor:
 			inS = np.where(FieldID == int(x[0]))[0]
@@ -612,7 +611,7 @@ class OpSim(object):
 			self.fieldID = np.append(self.fieldID, x[0])
 			self.RA = np.append(self.RA, x[1])
 			self.Dec = np.append(self.Dec, x[2])
-			self.obsDates = np.append(self.obsDates, dict())
+		self.obsDates = np.full_like(self.RA, dict(), dtype=dict)
 
 		print(f'returned {len(self.fieldID)} fields')
 ###########################################################################################################
