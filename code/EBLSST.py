@@ -1250,7 +1250,6 @@ class LSSTEBworker(object):
 		self.n_radius_failed = 0
 
 		self.OpSim = None #will hold the OpSim object
-
 		self.Galaxy = None #will hold TRILEGAL object
 		self.Breivik = None
 		self.BreivikGal = None
@@ -1452,7 +1451,9 @@ class LSSTEBworker(object):
 
 	def writeOutputLine(self, EB, OpSimi=0, header = False):
 		if (header):
+			print(self.useOpSimDates, self.Galaxy, self.OpSim)
 			if (self.useOpSimDates and self.Galaxy != None and self.OpSim != None):
+				print("writing header")
 				self.csvwriter.writerow(['OpSimID','OpSimRA','OpSimDec','NstarsTRILEGAL', 'NOpSimObs_u', 'NOpSimObs_g', 'NOpSimObs_r', 'NOpSimObs_i', 'NOpSimObs_z', 'NOpSimObs_y'])
 				self.csvwriter.writerow([self.OpSim.fieldID[OpSimi], self.OpSim.RA[OpSimi], self.OpSim.Dec[OpSimi], self.Galaxy.Nstars, self.OpSim.NobsDates[OpSimi]['u_'], self.OpSim.NobsDates[OpSimi]['g_'], self.OpSim.NobsDates[OpSimi]['r_'], self.OpSim.NobsDates[OpSimi]['i_'], self.OpSim.NobsDates[OpSimi]['z_'], self.OpSim.NobsDates[OpSimi]['y_']])
 
