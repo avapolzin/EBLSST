@@ -1,7 +1,6 @@
 #!/software/anaconda3.6/bin/python
 
-from EBLSST import LSSTEBworker, BreivikGalaxy
-import multiprocessing, logging
+from EBLSST import LSSTEBworker, OpSim
 import csv
 import argparse
 import numpy as np
@@ -11,15 +10,13 @@ from mpi4py import MPI
 def define_args():
 	parser = argparse.ArgumentParser()
 
-	parser.add_argument("-n", "--n_cores", 		type=int, help="Number of cores [0]")
 	parser.add_argument("-c", "--n_bin", 		type=int, help="Number of binaries per process [100000]")
-	parser.add_argument("-i", "--gal_file", 	type=str, help="Galaxy input file name")
 	parser.add_argument("-o", "--output_file", 	type=str, help="output file name")
 	parser.add_argument("-a", "--n_band", 		type=int, help="Nterms_band input for gatspy [2]")
 	parser.add_argument("-b", "--n_base", 		type=int, help="Nterms_base input for gatspy [2]")
 	parser.add_argument("-s", "--seed", 		type=int, help="random seed []")
 	parser.add_argument("-v", "--verbose", 		action='store_true', help="Set to show verbose output")
-	parser.add_argument("-l", "--opsim", 		action='store_true', help="set to run LSST OpSim, else run nobs =")
+	parser.add_argument("-l", "--opsim", 		action='store_false', help="set to run LSST OpSim, else run nobs =")
 
 	#https://docs.python.org/2/howto/argparse.html
 	args = parser.parse_args()
@@ -32,19 +29,9 @@ def define_args():
 
 def apply_args(worker, args):
 
-	if (args.n_cores is not None):
-		worker.n_cores = args.n_cores
-	if (worker.n_cores > 1):
-		worker.do_parallel = True
-	else:	
-		worker.n_cores = 1
-		worker.do_parallel = False 
 
 	if (args.n_bin is not None):
 		worker.n_bin = args.n_bin
-
-	if (args.gal_file is not None):
-		worker.GalaxyFile = args.gal_file
 		
 	if (args.output_file is not None):
 		worker.ofile = args.output_file
@@ -62,8 +49,6 @@ def apply_args(worker, args):
 		worker.seed = args.seed
 
 
-
-
 if __name__ == "__main__":
 
 	comm = MPI.COMM_WORLD
@@ -75,64 +60,69 @@ if __name__ == "__main__":
 
 	args = define_args()
 	if (args.n_bin == None):
-		args.n_bin = 2
+		args.n_bin = size
 
-	n_binr = args.n_bin
-	n_bins = n_binr*size
-	nfields = 15 #this is the number of fields returned from Katie's KDE
-	# sendbuf = np.empty((n_bins, nfields), dtype='float64')
-	# recvbuf = np.empty((n_binr, nfields), dtype='float64')
-	sendbuf = np.empty((size, n_binr*nfields), dtype='float64')
-	recvbuf = np.empty(n_binr*nfields, dtype='float64')
+	nfields = 5292 #total number of fields from OpSim
+	nfieldsPerCore = int(np.floor(nfields/size))
 
-	#only the rank 0 process will generate the galactic model
+	sendbuf = np.empty((size, 3*nfieldsPerCore), dtype='float64')
+	recvbuf = np.empty(3*nfieldsPerCore, dtype='float64')
+
 	if (rank == 0):
+		OpS = OpSim()
+		OpS.dbFile = '/projects/p30137/ageller/EBLSST/input/db/minion_1016_sqlite.db' #for the OpSim database	
+		OpS.getAllOpSimFields()
 
-		#only do Katie's model once (though it's not a huge time sync...)
-		print("in rank 0")
-
-		#Katie's code to generate the binaries
-		g = BreivikGalaxy()
-		g.n_bin = n_bins
-
-		#define the correct paths to the input files and db
-		g.GalaxyFile ='/projects/p30137/ageller/EBLSST/input/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
-		g.GalaxyFileLogPrefix ='/projects/p30137/ageller/EBLSST/input/fixedPopLogCm_'
-
-		#now get the binaries
-		gxDat = g.LSSTsim()
+		#scatter the fieldID, RA, Dec 
+		nfields = len(OpS.fieldID)
+		#get as close as we can to having everything scattered
+		maxIndex = nfieldsPerCore*size
+		output = np.vstack((OpS.fieldID[:maxIndex], OpS.RA[:maxIndex], OpS.Dec[:maxIndex])).T
 
 		print("reshaping to send to other processes")
-		sendbuf = np.reshape(gxDat, (size, n_binr*nfields))
+		sendbuf = np.reshape(output, (size, 3*nfieldsPerCore))
 
-##########
-#####Broadcast field array, and an array with indices that are available to run.  Can I modify that to remove a value when chosen to run?
-##########
 
 	#scatter to the all of the processes
-	comm.Scatter(sendbuf,recvbuf, root=root) 
+	comm.Scatter(sendbuf, recvbuf, root=root) 
 	#now reshape again to get back to the right format
-	gxDat = np.reshape(recvbuf, (n_binr, nfields))
+	fieldData = np.reshape(recvbuf, (nfieldsPerCore, 3))	
 
+	print("rank", rank, fieldData)
 
-	#Our LSST EB class to use gatspy and ellc
+	#add on any extra fields to rank =0
+	if (rank == 0):
+		if (nfieldsPerCore*size < nfields):
+			print("adding to rank 0")
+			extra = np.vstack((OpS.fieldID[maxIndex:], OpS.RA[maxIndex:], OpS.Dec[maxIndex:])).T
+			fieldData = np.append(fieldData, extra)
+
+	#define the worker
 	worker = LSSTEBworker()
 	worker.filterFilesRoot = '/projects/p30137/ageller/EBLSST/input/filters/'
-
 	#check for command-line arguments
 	apply_args(worker, args)	
 	if (worker.seed == None):
 		worker.seed = 1234
 	worker.seed += rank
+
+	#redefine the OpSim fieldID, RA, Dec and the run through the rest of the code
+	fields = fieldData.T
+	OpS = OpSim()
+	OpS.dbFile = '/projects/p30137/ageller/EBLSST/input/db/minion_1016_sqlite.db' #for the OpSim database	
+	OpS.getCursors()
+	OpS.fieldID = fields[0]
+	OpS.RA = fields[1]
+	OpS.Dec = fields[2]
+	worker.OpSim = OpS
+
+	#initialize
 	worker.initialize() #sets the random seed and reads in the filter files
 	#worker.doLSM = False
 
-	#get the summary cursor for OpSim, if necessary
-	if (worker.doOpSim):
-		worker.dbFile = '/projects/p30137/ageller/EBLSST/db/minion_1016_sqlite.db' #for the OpSim database	
-		print('Getting OpSim cursors...')
-		worker.getCursors()
-
+	print(worker.BreivikGal)
+	
+	raise
 
 	#set up the output file
 	worker.ofile = 'output_files/'+str(rank).zfill(3) + worker.ofile

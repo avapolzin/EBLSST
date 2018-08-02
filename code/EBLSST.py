@@ -592,6 +592,7 @@ class OpSim(object):
 			self.RA = np.append(self.RA, x[1])
 			self.Dec = np.append(self.Dec, x[2])
 	
+		print(f'returned {len(self.fieldID)} fields')
 ###########################################################################################################
 ###########################################################################################################
 ###########################################################################################################
@@ -1184,7 +1185,7 @@ class LSSTEBworker(object):
 		#NOTE: these need to be defined on the command line.  The default, if not defined, will be False
 		self.do_plot = False 
 		self.verbose = False
-		self.useOpSimDate = True
+		self.useOpSimDates = True
 
 		self.useFast = True
 		self.doLSM = True
@@ -1380,7 +1381,7 @@ class LSSTEBworker(object):
 		EB.omega = line[14] #radians
 
 		EB.dist = line[11] #kpc
-		if (self.TRILEGALmodel == None):
+		if (self.Galaxy == None):
 			#pc
 			EB.xGx = line[8] 
 			EB.yGx = line[9] 
@@ -1528,8 +1529,8 @@ class LSSTEBworker(object):
 
 		#now gather the output
 		outNames = ['logm2', 'logr2', 'logL2', 'ecc', 'logp']
-		samples = self.emcee_sampler.chain[:, nburn:, :].reshape((-1, len(outNames)))
-		blobs = np.array(self.emcee_sampler.blobs[nburn:][:][:])
+		samples = self.emcee_sampler.chain[:, self.emcee_nburn:, :].reshape((-1, len(outNames)))
+		blobs = np.array(self.emcee_sampler.blobs[self.emcee_nburn:][:][:])
 		extras = blobs.reshape((samples.shape[0], blobs.shape[-1]))
 		result = np.hstack((extras, samples))
 
