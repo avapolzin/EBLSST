@@ -1253,6 +1253,8 @@ class LSSTEBworker(object):
 		self.n_period_failed = 0
 		self.n_radius_failed = 0
 
+		self.NobsLim = 10 #limit total number of obs below which we will not run it through anything (in initialize)
+		
 		self.OpSim = None #will hold the OpSim object
 		self.Galaxy = None #will hold TRILEGAL object
 		self.Breivik = None
