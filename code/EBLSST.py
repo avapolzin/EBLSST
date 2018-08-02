@@ -1362,7 +1362,7 @@ class LSSTEBworker(object):
 
 
 
-	def getEB(self, line, OpSimi):
+	def getEB(self, line, OpSimi=0):
 		EB = EclipsingBinary()
 
 		# EB.seed = self.seed + i
@@ -1421,12 +1421,16 @@ class LSSTEBworker(object):
 		return EB
 
 
-	def writeOutputLine(self, EB, header = False):
+	def writeOutputLine(self, EB, OpSimi=0, header = False):
 		if (header):
-			self.csvwriter.writerow(['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'RA', 'Dec', 'd', 'nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD'])
+
+			self.csvwriter.writerow(['OpSimID','OpSimRA','OpSimDec'])
+			self.csvwriter.writerow([self.OpSim.ID[OpSimi], self.OpSim.RA[OpSimi], self.OpSim.Dec[OpSimi]])
+
+			self.csvwriter.writerow(['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD'])
 
 		else:
-			output = [EB.period, EB.m1, EB.m2, EB.r1, EB.r2, EB.eccentricity, EB.inclination, EB.RA, EB.Dec, EB.dist, EB.nobs, EB.appMagMeanAll, EB.maxDeltaMag, EB.appmag_failed, EB.incl_failed, EB.period_failed, EB.radius_failed]
+			output = [EB.period, EB.m1, EB.m2, EB.r1, EB.r2, EB.eccentricity, EB.inclination, EB.dist, EB.nobs, EB.appMagMeanAll, EB.maxDeltaMag, EB.appmag_failed, EB.incl_failed, EB.period_failed, EB.radius_failed]
 
 			#this is for gatspt
 			for filt in self.filters:
@@ -1566,7 +1570,7 @@ class LSSTEBworker(object):
 
 		return (np.vstack( (m1, m2, logp, ecc, r1, r2, L1, L2, x, x, x, d, inc, OMEGA, omega, Av, MH) ).T).squeeze()
 
-	def initialize(self, i=0):
+	def initialize(self, OpSimi=0):
 		if (self.seed == None):
 			np.random.seed()
 		else:
@@ -1580,9 +1584,9 @@ class LSSTEBworker(object):
 		
 		if (self.Galaxy == None):
 			self.Galaxy = TRILEGAL()
-			self.Galaxy.RA = self.OpSim.RA[i]
-			self.Galaxy.Dec = self.OpSim.Dec[i]
-			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(self.OpSim.fieldID[i])+'.h5' 
+			self.Galaxy.RA = self.OpSim.RA[OpSimi]
+			self.Galaxy.Dec = self.OpSim.Dec[OpSimi]
+			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(self.OpSim.fieldID[OpSimi])+'.h5' 
 			self.Galaxy.setModel()	
 
 		if (self.Breivik == None):

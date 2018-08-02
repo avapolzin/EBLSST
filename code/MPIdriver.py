@@ -119,17 +119,20 @@ if __name__ == "__main__":
 	OpS.Dec = fields[2]
 	worker.OpSim = OpS
 
-	#set up the output file (NEED TO ADD THE FIELD INFORMATION HERE!!)
-	worker.ofile = 'output_files/'+str(rank).zfill(3) + worker.ofile
-	csvfile = open(worker.ofile, 'wt')	
-	worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-	#write header
-	worker.writeOutputLine(None, header=True)
+
 
 
 	#initialize
 	for i in range(len(fields)):
-		worker.initialize(i=i) #sets the random seed and reads in the filter files
+
+		worker.initialize(OpSimi=i) #sets the random seed and reads in the filter files
+
+		#set up the output file (NEED TO ADD THE FIELD INFORMATION HERE!!)
+		worker.ofile = 'output_files/'+str(worker.OpSim.fieldID[i]).zfill(3) + worker.ofile
+		csvfile = open(worker.ofile, 'wt')	
+		worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+		#write header
+		worker.writeOutputLine(None, OpSimi=i, header=True)
 
 		print(worker.BreivikGal)
 
