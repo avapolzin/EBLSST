@@ -521,6 +521,7 @@ class OpSim(object):
 		self.Dec = None
 		self.Nobs = None
 		self.obsDates = None
+		self.NobsDates = None
 
 	#database manipulation
 	def getCursors(self):
@@ -589,10 +590,14 @@ class OpSim(object):
 
 	def setDates(self, i, filters):
 		self.obsDates[i] = dict()
+		self.NobsDates[i] = dict()
 		for filt in filters:
 			self.obsDates[i][filt] = self.getDates(filt)
+			self.NobsDates[i][filt] = 0
+			if (self.obsDates[i][filt][0] != None):
+				self.NobsDates[i][filt] = len(self.obsDates[i][filt])
 			if (self.verbose):
-				print(f'observing with OpSim in filter {filt}, have {len(self.obsDates[i][filt])} observations')
+				print(f'observing with OpSim in filter {filt}, have {self.NobsDates[i][filt]} observations')
 
 	def getAllOpSimFields(self):
 		print("getting OpSim fields...")
@@ -612,6 +617,7 @@ class OpSim(object):
 			self.RA = np.append(self.RA, x[1])
 			self.Dec = np.append(self.Dec, x[2])
 		self.obsDates = np.full_like(self.RA, dict(), dtype=dict)
+		self.NobsDates = np.full_like(self.RA, dict(), dtype=dict)
 
 		print(f'returned {len(self.fieldID)} fields')
 ###########################################################################################################
@@ -1448,7 +1454,7 @@ class LSSTEBworker(object):
 		if (header):
 			if (self.useOpSimDates and self.Galaxy != None and self.OpSim != None):
 				self.csvwriter.writerow(['OpSimID','OpSimRA','OpSimDec','NstarsTRILEGAL', 'NOpSimObs_u', 'NOpSimObs_g', 'NOpSimObs_r', 'NOpSimObs_i', 'NOpSimObs_z', 'NOpSimObs_y'])
-				self.csvwriter.writerow([self.OpSim.fieldID[OpSimi], self.OpSim.RA[OpSimi], self.OpSim.Dec[OpSimi], self.Galaxy.Nstars, self.len(OpSim.obsDates[OpSimi]['u_']), self.len(OpSim.obsDates[OpSimi]['g_']), self.len(OpSim.obsDates[OpSimi]['r_']), self.len(OpSim.obsDates[OpSimi]['i_']), self.len(OpSim.obsDates[OpSimi]['z_']), self.len(OpSim.obsDates[OpSimi]['y_'])])
+				self.csvwriter.writerow([self.OpSim.fieldID[OpSimi], self.OpSim.RA[OpSimi], self.OpSim.Dec[OpSimi], self.Galaxy.Nstars, self.OpSim.NobsDates[OpSimi]['u_'], self.OpSim.NobsDates[OpSimi]['g_'], self.OpSim.NobsDates[OpSimi]['r_'], self.OpSim.NobsDates[OpSimi]['i_'], self.OpSim.NobsDates[OpSimi]['z_'], self.OpSim.NobsDates[OpSimi]['y_']])
 
 			self.csvwriter.writerow(['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD'])
 
@@ -1609,7 +1615,7 @@ class LSSTEBworker(object):
 			self.Galaxy = TRILEGAL()
 			self.Galaxy.RA = self.OpSim.RA[OpSimi]
 			self.Galaxy.Dec = self.OpSim.Dec[OpSimi]
-			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(self.OpSim.fieldID[OpSimi])+'.h5' 
+			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(int(self.OpSim.fieldID[OpSimi]))+'.h5' 
 			self.Galaxy.setModel()	
 
 		if (self.Breivik == None):
