@@ -1622,10 +1622,10 @@ class LSSTEBworker(object):
 			self.OpSim = OpSim()
 			#get the OpSim fields
 			self.OpSim.getAllOpSimFields()
-			self.OpSim.setDates(OpSimi, self.filters)
 
 		#check if we need to run this
 		if (self.useOpSimDates):
+			self.OpSim.setDates(OpSimi, self.filters)
 			print(f'total number of OpSim observation dates (all filters) = {self.OpSim.totalNobs[OpSimi]}')
 			if (self.OpSim.totalNobs[OpSimi] < self.NobsLim):
 				return False
