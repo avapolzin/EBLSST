@@ -21,5 +21,5 @@ __pycache__
 
 *.csv
 *.vot
-*.dat
+#*.dat
 *.h5
