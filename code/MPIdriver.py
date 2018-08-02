@@ -123,11 +123,12 @@ if __name__ == "__main__":
 	for i in range(len(fields)):
 
 		#set up the output file (NEED TO ADD THE FIELD INFORMATION HERE!!)
-		worker.ofile = 'output_files/'+str(worker.OpSim.fieldID[i]).zfill(4) + worker.ofile
+		worker.ofile = 'output_files/'+str(int(worker.OpSim.fieldID[i])).zfill(4) + worker.ofile
 		csvfile = open(worker.ofile, 'wt')	
 		worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 		#write header
 		worker.writeOutputLine(None, OpSimi=i, header=True)
+		csvfile.flush()
 
 		#initialize
 		worker.initialize(OpSimi=i) #Note: this will not redo the OpSim class, because we've set it above
