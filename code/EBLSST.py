@@ -522,6 +522,7 @@ class OpSim(object):
 		self.Nobs = None
 		self.obsDates = None
 		self.NobsDates = None
+		self.totalNobs = None
 
 	#database manipulation
 	def getCursors(self):
@@ -591,11 +592,13 @@ class OpSim(object):
 	def setDates(self, i, filters):
 		self.obsDates[i] = dict()
 		self.NobsDates[i] = dict()
+		self.totalNobs[i] = 0
 		for filt in filters:
 			self.obsDates[i][filt] = self.getDates(filt)
 			self.NobsDates[i][filt] = 0
 			if (self.obsDates[i][filt][0] != None):
 				self.NobsDates[i][filt] = len(self.obsDates[i][filt])
+			self.totalNobs[i] += self.NobsDates[i][filt]
 			if (self.verbose):
 				print(f'observing with OpSim in filter {filt}, have {self.NobsDates[i][filt]} observations')
 
@@ -618,6 +621,7 @@ class OpSim(object):
 			self.Dec = np.append(self.Dec, x[2])
 		self.obsDates = np.full_like(self.RA, dict(), dtype=dict)
 		self.NobsDates = np.full_like(self.RA, dict(), dtype=dict)
+		self.totalNobs = np.full_like(self.RA, 0)
 
 		print(f'returned {len(self.fieldID)} fields')
 ###########################################################################################################
@@ -1449,7 +1453,8 @@ class LSSTEBworker(object):
 		return EB
 
 
-	def writeOutputLine(self, EB, OpSimi=0, header = False):
+	def writeOutputLine(self, EB, OpSimi=0, header = False, norun = False):
+		cols = ['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD']
 		if (header):
 			print(self.useOpSimDates, self.Galaxy, self.OpSim)
 			if (self.useOpSimDates and self.Galaxy != None and self.OpSim != None):
@@ -1457,7 +1462,10 @@ class LSSTEBworker(object):
 				self.csvwriter.writerow(['OpSimID','OpSimRA','OpSimDec','NstarsTRILEGAL', 'NOpSimObs_u', 'NOpSimObs_g', 'NOpSimObs_r', 'NOpSimObs_i', 'NOpSimObs_z', 'NOpSimObs_y'])
 				self.csvwriter.writerow([self.OpSim.fieldID[OpSimi], self.OpSim.RA[OpSimi], self.OpSim.Dec[OpSimi], self.Galaxy.Nstars, self.OpSim.NobsDates[OpSimi]['u_'], self.OpSim.NobsDates[OpSimi]['g_'], self.OpSim.NobsDates[OpSimi]['r_'], self.OpSim.NobsDates[OpSimi]['i_'], self.OpSim.NobsDates[OpSimi]['z_'], self.OpSim.NobsDates[OpSimi]['y_']])
 
-			self.csvwriter.writerow(['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD'])
+			output = cols
+
+		elif (norun):
+			output = [-1 for x in range(len(cols))]
 
 		else:
 			output = [EB.period, EB.m1, EB.m2, EB.r1, EB.r2, EB.eccentricity, EB.inclination, EB.dist, EB.nobs, EB.appMagMeanAll, EB.maxDeltaMag, EB.appmag_failed, EB.incl_failed, EB.period_failed, EB.radius_failed]
@@ -1466,7 +1474,8 @@ class LSSTEBworker(object):
 			for filt in self.filters:
 				output.append(EB.LSS[filt]) 
 			output.append(EB.LSM) 
-			self.csvwriter.writerow(output)	
+
+		self.csvwriter.writerow(output)	
 
 
 	def matchBreivikTRILEGAL(self):
@@ -1607,11 +1616,14 @@ class LSSTEBworker(object):
 			np.random.seed(seed = self.seed)
 
 
-		if (self.OpSim == None):
+		if (self.useOpSimDates and self.OpSim == None):
 			self.OpSim = OpSim()
 			#get the OpSim fields
 			self.OpSim.getAllOpSimFields()
-		
+			self.OpSim.setDates(OpSimi, self.filters)
+			if (self.OpSim.totalNobs[OpSimi] < self.NobsLim):
+				return False
+
 		if (self.Galaxy == None):
 			self.Galaxy = TRILEGAL()
 			self.Galaxy.RA = self.OpSim.RA[OpSimi]
@@ -1627,3 +1639,5 @@ class LSSTEBworker(object):
 
 		if (self.BreivikGal == None):
 			self.matchBreivikTRILEGAL()
+
+		return True

@@ -123,39 +123,43 @@ if __name__ == "__main__":
 	worker.OpSim.verbose = True
 
 	for i in range(len(fields)):
-		worker.OpSim.setDates(i, worker.filters)
+		#initialize
+		passed = worker.initialize(OpSimi=i) #Note: this will not redo the OpSim class, because we've set it above
 
 		#set up the output file (NEED TO ADD THE FIELD INFORMATION HERE!!)
 		worker.ofile = 'output_files/'+str(int(worker.OpSim.fieldID[i])).zfill(4) + worker.ofile
 		csvfile = open(worker.ofile, 'wt')	
 		worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+
+		
 		#write header
 		worker.writeOutputLine(None, OpSimi=i, header=True)
 		csvfile.flush()
 
-		#initialize
-		worker.initialize(OpSimi=i) #Note: this will not redo the OpSim class, because we've set it above
+		if (passed):
 
-		print(worker.BreivikGal)
+			print(worker.BreivikGal)
 
-		#run through ellc and gatspy
-		gxDat = worker.sampleBreivikGal()
-		for i, line in enumerate(gxDat):
-			line = gxDat[i]
+			#run through ellc and gatspy
+			gxDat = worker.sampleBreivikGal()
+			for i, line in enumerate(gxDat):
+				line = gxDat[i]
 
-			#define the binary parameters
-			EB = worker.getEB(line, i)
-			EB.lineNum = i
-			print(rank, i, EB.period)
+				#define the binary parameters
+				EB = worker.getEB(line, i)
+				EB.lineNum = i
+				print(rank, i, EB.period)
 
-			if (EB.observable):
-				worker.return_dict[j] = EB
-				worker.run_ellc_gatspy(j)
-				EB = worker.return_dict[j]
+				if (EB.observable):
+					worker.return_dict[j] = EB
+					worker.run_ellc_gatspy(j)
+					EB = worker.return_dict[j]
 
-		worker.writeOutputLine(EB)
-		csvfile.flush()
-
+			worker.writeOutputLine(EB)
+			csvfile.flush()
+		else:
+			worker.writeOutputLine(None, OpSimi=i, norun=True)
+			csvfile.flush()
 
 
 		#get ready for the next field
