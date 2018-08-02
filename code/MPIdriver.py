@@ -165,7 +165,7 @@ if __name__ == "__main__":
 		#get ready for the next field
 		worker.Galaxy = None
 		worker.BreivikGal = None
-		raise
+		
 
 
 	csvfile.close()
