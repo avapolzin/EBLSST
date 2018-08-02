@@ -1447,9 +1447,9 @@ class LSSTEBworker(object):
 
 	def writeOutputLine(self, EB, OpSimi=0, header = False):
 		if (header):
-
-			self.csvwriter.writerow(['OpSimID','OpSimRA','OpSimDec','NstarsTRILEGAL'])
-			self.csvwriter.writerow([self.OpSim.fieldID[OpSimi], self.OpSim.RA[OpSimi], self.OpSim.Dec[OpSimi], self.Galaxy.Nstars])
+			if (self.useOpSimDates and self.Galaxy != None and self.OpSim != None):
+				self.csvwriter.writerow(['OpSimID','OpSimRA','OpSimDec','NstarsTRILEGAL', 'NOpSimObs_u', 'NOpSimObs_g', 'NOpSimObs_r', 'NOpSimObs_i', 'NOpSimObs_z', 'NOpSimObs_y'])
+				self.csvwriter.writerow([self.OpSim.fieldID[OpSimi], self.OpSim.RA[OpSimi], self.OpSim.Dec[OpSimi], self.Galaxy.Nstars, self.len(OpSim.obsDates[OpSimi]['u_']), self.len(OpSim.obsDates[OpSimi]['g_']), self.len(OpSim.obsDates[OpSimi]['r_']), self.len(OpSim.obsDates[OpSimi]['i_']), self.len(OpSim.obsDates[OpSimi]['z_']), self.len(OpSim.obsDates[OpSimi]['y_'])])
 
 			self.csvwriter.writerow(['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD'])
 
