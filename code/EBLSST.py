@@ -1537,9 +1537,8 @@ class LSSTEBworker(object):
 		self.BreivikGal = result
 
 
-	def sampleBreivikGal(self, Nsample=1):
-		Nsample = 1000
-		indices = np.random.randint(0, high=len(self.BreivikGal), size=Nsample)
+	def sampleBreivikGal(self):
+		indices = np.random.randint(0, high=len(self.BreivikGal), size=self.n_bin)
 		s = self.BreivikGal[indices].T
 		#outNames = ['Av', '[M/H]', 'logD', logm1', 'logr1', 'logL1', 'logm2', 'logr2', 'logL2', 'ecc', 'logp']
 
@@ -1554,10 +1553,10 @@ class LSSTEBworker(object):
 		L2 = 10.**s[8]
 		ecc = s[9]
 		logp = s[10]
-		inc = np.arccos(2.*np.random.uniform(0,1.0,Nsample) - 1.)
-		omega = np.random.uniform(0,2*np.pi,Nsample)
-		OMEGA = np.random.uniform(0,2*np.pi,Nsample)
-		x = np.zeros(Nsample)
+		inc = np.arccos(2.*np.random.uniform(0,1.0,self.n_bin) - 1.)
+		omega = np.random.uniform(0,2*np.pi,self.n_bin)
+		OMEGA = np.random.uniform(0,2*np.pi,self.n_bin)
+		x = np.zeros(self.n_bin)
 
 		#we don't need position, but we do need distance
 		#[m1, m2, logp, ecc, r1, r2, L1, L2, x,y,z, dist, inc, OMEGA, omega, Av, MH]

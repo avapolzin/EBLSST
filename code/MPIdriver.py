@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
 	args = define_args()
 	if (args.n_bin == None):
-		args.n_bin = size
+		args.n_bin = 4
 
 	nfields = 5292 #total number of fields from OpSim
 	nfieldsPerCore = int(np.floor(nfields/size))
@@ -118,39 +118,44 @@ if __name__ == "__main__":
 	OpS.Dec = fields[2]
 	worker.OpSim = OpS
 
-	#initialize
-	worker.initialize() #sets the random seed and reads in the filter files
-	#worker.doLSM = False
-
-	print(worker.BreivikGal)
-
-	raise
-
-	#set up the output file
+	#set up the output file (NEED TO ADD THE FIELD INFORMATION HERE!!)
 	worker.ofile = 'output_files/'+str(rank).zfill(3) + worker.ofile
 	csvfile = open(worker.ofile, 'wt')	
 	worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 	#write header
 	worker.writeOutputLine(None, header=True)
 
-	j = 0 #this is used with multiprocessing to keep track of the return_dict, but not needed here
-	for i, line in enumerate(gxDat):
-		line = gxDat[i]
 
-		#define the binary parameters
-		EB = worker.getEB(line, i)
-		EB.lineNum = i
-		print(rank, i, EB.period)
+	#initialize
+	for i in range(len(fields)):
+		worker.initialize(i=i) #sets the random seed and reads in the filter files
 
-		if (EB.observable):
-			worker.return_dict[j] = EB
-			worker.run_ellc_gatspy(j)
-			EB = worker.return_dict[j]
+		print(worker.BreivikGal)
+
+		#run through ellc and gatspy
+		gxDat = worker.sampleBreivikGal()
+		for i, line in enumerate(gxDat):
+			line = gxDat[i]
+
+			#define the binary parameters
+			EB = worker.getEB(line, i)
+			EB.lineNum = i
+			print(rank, i, EB.period)
+
+			if (EB.observable):
+				worker.return_dict[j] = EB
+				worker.run_ellc_gatspy(j)
+				EB = worker.return_dict[j]
 
 		worker.writeOutputLine(EB)
 		csvfile.flush()
 
 
+
+		#get ready for the next field
+		worker.Galaxy = None
+		worker.BreivikGal = None
+		raise
 
 
 	csvfile.close()
