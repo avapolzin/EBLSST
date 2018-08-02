@@ -1455,7 +1455,7 @@ class LSSTEBworker(object):
 		return EB
 
 
-	def writeOutputLine(self, EB, OpSimi=0, header = False, norun = False):
+	def writeOutputLine(self, EB, OpSimi=0, header = False, noRun = False):
 		cols = ['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD']
 		if (header):
 			print(self.useOpSimDates, self.Galaxy, self.OpSim)
@@ -1466,7 +1466,7 @@ class LSSTEBworker(object):
 
 			output = cols
 
-		elif (norun):
+		elif (noRun):
 			output = [-1 for x in range(len(cols))]
 
 		else:
@@ -1623,6 +1623,9 @@ class LSSTEBworker(object):
 			#get the OpSim fields
 			self.OpSim.getAllOpSimFields()
 			self.OpSim.setDates(OpSimi, self.filters)
+
+		#check if we need to run this
+		if (self.useOpSimDates):
 			print(f'total number of OpSim observation dates (all filters) = {self.OpSim.totalNobs[OpSimi]}')
 			if (self.OpSim.totalNobs[OpSimi] < self.NobsLim):
 				return False

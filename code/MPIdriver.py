@@ -131,7 +131,6 @@ if __name__ == "__main__":
 		csvfile = open(worker.ofile, 'wt')	
 		worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-
 		#write header
 		worker.writeOutputLine(None, OpSimi=i, header=True)
 		csvfile.flush()
@@ -158,7 +157,7 @@ if __name__ == "__main__":
 			worker.writeOutputLine(EB)
 			csvfile.flush()
 		else:
-			worker.writeOutputLine(None, OpSimi=i, norun=True)
+			worker.writeOutputLine(None, OpSimi=i, noRun=True)
 			csvfile.flush()
 
 
