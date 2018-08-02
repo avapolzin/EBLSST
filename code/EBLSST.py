@@ -1425,7 +1425,7 @@ class LSSTEBworker(object):
 		if (header):
 
 			self.csvwriter.writerow(['OpSimID','OpSimRA','OpSimDec'])
-			self.csvwriter.writerow([self.OpSim.ID[OpSimi], self.OpSim.RA[OpSimi], self.OpSim.Dec[OpSimi]])
+			self.csvwriter.writerow([self.OpSim.fieldID[OpSimi], self.OpSim.RA[OpSimi], self.OpSim.Dec[OpSimi]])
 
 			self.csvwriter.writerow(['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD'])
 

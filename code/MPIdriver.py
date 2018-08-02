@@ -120,19 +120,17 @@ if __name__ == "__main__":
 	worker.OpSim = OpS
 
 
-
-
-	#initialize
 	for i in range(len(fields)):
 
-		worker.initialize(OpSimi=i) #sets the random seed and reads in the filter files
-
 		#set up the output file (NEED TO ADD THE FIELD INFORMATION HERE!!)
-		worker.ofile = 'output_files/'+str(worker.OpSim.fieldID[i]).zfill(3) + worker.ofile
+		worker.ofile = 'output_files/'+str(worker.OpSim.fieldID[i]).zfill(4) + worker.ofile
 		csvfile = open(worker.ofile, 'wt')	
 		worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 		#write header
 		worker.writeOutputLine(None, OpSimi=i, header=True)
+
+		#initialize
+		worker.initialize(OpSimi=i) #Note: this will not redo the OpSim class, because we've set it above
 
 		print(worker.BreivikGal)
 
