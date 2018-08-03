@@ -1677,6 +1677,7 @@ class LSSTEBworker(object):
 			self.Galaxy = TRILEGAL()
 			self.Galaxy.RA = self.OpSim.RA[OpSimi]
 			self.Galaxy.Dec = self.OpSim.Dec[OpSimi]
+			self.Galaxy.fieldID = self.OpSim.fieldID[OpSimi]
 			self.Galaxy.tmpdir = self.galDir
 			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(int(self.OpSim.fieldID[OpSimi]))+'.h5'
 			self.Galaxy.setModel()	
