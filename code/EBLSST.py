@@ -1019,7 +1019,7 @@ class TRILEGAL(object):
 		vespa.stars.trilegal.get_trilegal(self.tmpfname, self.RA, self.Dec, folder=self.tmpdir, galactic=False, \
 			filterset=self.filterset, area=self.area, maglim=self.maglim, binaries=self.binaries, \
 			trilegal_version='1.6', sigma_AV=self.sigma_AV, convert_h5=True)
-		self.model = pd.read_hdf(self.tmpfname)
+		self.model = pd.read_hdf(os.path.join(self.tmpdir,self.tmpfname))
 		self.Nstars = len(self.model)
 
 		#add the distance
