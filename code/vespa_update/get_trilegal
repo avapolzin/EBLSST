@@ -39,7 +39,7 @@ while () {
       if (/output\d/) {
         last;
       } else {
-        print "No communication with $webserver, will retry in 2 min\n";
+        print "webserver is busy, will retry in 2 min\n";
         `sleep 120`;
       }
     }
