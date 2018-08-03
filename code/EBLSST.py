@@ -341,7 +341,7 @@ class EclipsingBinary(object):
 			find_y_a3 = np.interp(y_wavelength, SDSSwavelength, a3_array)
 			find_y_a4 = np.interp(y_wavelength, SDSSwavelength, a4_array)
 			
-			return find_y_a1, find_y_a2, find_y_a3, find_y_a4
+			return find_y_a1[0], find_y_a2[0], find_y_a3[0], find_y_a4[0]
 	
 		self.appMagObs[filt] = [None]
 		self.deltaMag[filt] = [None]
@@ -357,8 +357,8 @@ class EclipsingBinary(object):
 		g2 = np.clip(self.g2, 0., 5.)
 		# print(T1, T2, g1, g2, self.g1, self.g2, self.M_H)
 		if (filt == 'y_'):
-			a1_1, a2_1, a3_1, a4_1, y = get_y_LDC(T1, g1, self.M_H)
-			a1_2, a2_2, a3_2, a4_2, y = get_y_LDC(T2, g2, self.M_H)
+			a1_1, a2_1, a3_1, a4_1 = get_y_LDC(T1, g1, self.M_H)
+			a1_2, a2_2, a3_2, a4_2 = get_y_LDC(T2, g2, self.M_H)
 		else:
 			ldy_filt = ellc.ldy.LimbGravityDarkeningCoeffs(filtellc)
 			a1_1, a2_1, a3_1, a4_1, y = ldy_filt(T1, g1, self.M_H)
