@@ -4,8 +4,8 @@ cp ~/anaconda/envs/py36/bin/get_trilegal .
 cp ~/anaconda/envs/py36/lib/python3.6/site-packages/vespa/stars/trilegal.py .
 
 Within trilegal.py:
--- I added one more argument to be sent to get_trilegal = the folder name
--- I also added the path to the extinction (part of vespa.stars)
+* I added one more argument to be sent to get_trilegal = the folder name
+* I also added the path to the extinction (part of vespa.stars)
 
 Within get_trilegal:
--- I prepended that folder name to lixo and tmpfile
+* I prepended that folder name to lixo and tmpfile and most of the filename
