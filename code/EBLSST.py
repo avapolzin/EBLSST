@@ -44,15 +44,17 @@ import emcee
 import vespa
 from vespa_update import trilegal
 import subprocess
-p = os.path.join(os.getcwd(),'vespa_update')
-cmd = f'export PATH="{p}"$PATH'
-proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+p = os.environ['PATH']
+pv = os.path.join(os.getcwd(),'vespa_update')
+p2 = pv+':'+p
+os.environ['PATH'] = p2
+print(f'PATH={os.environ['PATH']}')
 #check that it recognizes the correct paths and executables
 cmd = 'echo $PATH'
-proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 print(proc.communicate())
 cmd = 'which get_trilegal'
-proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 print(proc.communicate())
 
 #extinction will allow me to convert A_V to any wavelength.  Not sure which reference is best.  I will use ccm89, for now. 
