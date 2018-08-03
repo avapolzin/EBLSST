@@ -37,9 +37,8 @@ while () {
   if (-s "${outputdir}/tmpfile") {
     open (TMP,"${outputdir}/tmpfile");
     while ($_=<TMP>) {
-      if (/output\d/) {
-        last;
-      } else {
+      print "$_\n";
+      last if (/output\d/) else {
         print "webserver is busy, will retry in 2 min\n";
         `sleep 120`;
       }
