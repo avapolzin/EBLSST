@@ -2,7 +2,6 @@ I want to allow multiple TRILEGAL downloads simultaneously.  I beleive this woul
 
 ```
 $ cp ~/anaconda/envs/py36/bin/get_trilegal .
-
 $ cp ~/anaconda/envs/py36/lib/python3.6/site-packages/vespa/stars/trilegal.py .
 ```
 
