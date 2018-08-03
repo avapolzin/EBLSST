@@ -42,20 +42,20 @@ import emcee
 
 #for TRILEGAL and maybe also A_V
 import vespa
-from vespa_update import trilegal
+from vespa_update import trilegal as trilegal_update
 import subprocess
 p = os.environ['PATH']
 pv = os.path.join(os.getcwd(),'vespa_update')
 p2 = pv+':'+p
 os.environ['PATH'] = p2
-print(f"PATH={os.environ['PATH']}")
 #check that it recognizes the correct paths and executables
-cmd = 'echo $PATH'
-proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-print(proc.communicate())
-cmd = 'which get_trilegal'
-proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-print(proc.communicate())
+# print(f"PATH={os.environ['PATH']}")
+# cmd = 'echo $PATH'
+# proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+# print(proc.communicate())
+# cmd = 'which get_trilegal'
+# proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+# print(proc.communicate())
 
 #extinction will allow me to convert A_V to any wavelength.  Not sure which reference is best.  I will use ccm89, for now. 
 #import extinction
@@ -1032,7 +1032,7 @@ class TRILEGAL(object):
 
 	def setModel(self):
 		print(f'downloading TRILEGAL model for ID={self.fieldID}, RA={self.RA}, DEC={self.Dec}')
-		vespa.stars.trilegal.get_trilegal(self.tmpfname, self.RA, self.Dec, folder=self.tmpdir, galactic=False, \
+		trilegal_update.get_trilegal(self.tmpfname, self.RA, self.Dec, folder=self.tmpdir, galactic=False, \
 			filterset=self.filterset, area=self.area, maglim=self.maglim, binaries=self.binaries, \
 			trilegal_version='1.6', sigma_AV=self.sigma_AV, convert_h5=True)
 		self.model = pd.read_hdf(os.path.join(self.tmpdir,self.tmpfname))
