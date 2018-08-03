@@ -72,6 +72,8 @@ if __name__ == "__main__":
 	if (rank == 0):
 		if not os.path.exists(galModelDir):
 			os.makedirs(galModelDir)
+		if not os.path.exists('output_files'):
+			os.makedirs('output_files')
 
 		OpS = OpSim()
 		OpS.dbFile = '/projects/p30137/ageller/EBLSST/input/db/minion_1016_sqlite.db' #for the OpSim database	
