@@ -1,6 +1,7 @@
 ## ellc.lc is in arbitrary flux units... am I using this correctly?
 
 
+import os
 import math
 import scipy.special as ss
 import scipy.stats
@@ -1001,6 +1002,7 @@ class TRILEGAL(object):
 		self.binaries = False
 		self.filterset = 'lsst' 
 		self.tmpfname = 'TRILEGAL_model.h5'
+		self.tmpdir = '.'
 
 		self.model = None
 		self.KDE = None
@@ -1014,7 +1016,7 @@ class TRILEGAL(object):
 
 	def setModel(self):
 		print(f'downloading TRILEGAL model for ID={self.fieldID}, RA={self.RA}, DEC={self.Dec}')
-		vespa.stars.trilegal.get_trilegal(self.tmpfname, self.RA, self.Dec, galactic=False, \
+		vespa.stars.trilegal.get_trilegal(self.tmpfname, self.RA, self.Dec, folder=self.tmpdir, galactic=False, \
 			filterset=self.filterset, area=self.area, maglim=self.maglim, binaries=self.binaries, \
 			trilegal_version='1.6', sigma_AV=self.sigma_AV, convert_h5=True)
 		self.model = pd.read_hdf(self.tmpfname)
@@ -1240,6 +1242,7 @@ class LSSTEBworker(object):
 		self.filterFilesRoot = '../input/filters/'
 		self.GalaxyFile ='../input/Breivik/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
 		self.GalaxyFileLogPrefix ='../input/Breivik/fixedPopLogCm_'
+		self.galDir = './'
 
 		#dictionaries -- could be handled by the multiprocessing manager, redefined in driver
 		self.return_dict = dict()
@@ -1628,7 +1631,8 @@ class LSSTEBworker(object):
 			self.Galaxy = TRILEGAL()
 			self.Galaxy.RA = self.OpSim.RA[OpSimi]
 			self.Galaxy.Dec = self.OpSim.Dec[OpSimi]
-			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(int(self.OpSim.fieldID[OpSimi]))+'.h5' 
+			self.Galaxy.tmpdir = self.galDir
+			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(int(self.OpSim.fieldID[OpSimi]))+'.h5'
 			self.Galaxy.setModel()	
 
 		#check if we need to run this

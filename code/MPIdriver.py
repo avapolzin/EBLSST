@@ -5,7 +5,7 @@ import csv
 import argparse
 import numpy as np
 from mpi4py import MPI
-
+import os
 
 def define_args():
 	parser = argparse.ArgumentParser()
@@ -68,7 +68,11 @@ if __name__ == "__main__":
 	sendbuf = np.empty((size, 3*nfieldsPerCore), dtype='float64')
 	recvbuf = np.empty(3*nfieldsPerCore, dtype='float64')
 
+	galModelDir = 'TRILEGALmodels'
 	if (rank == 0):
+		if not os.path.exists(galModelDir):
+			os.makedirs(galModelDir)
+
 		OpS = OpSim()
 		OpS.dbFile = '/projects/p30137/ageller/EBLSST/input/db/minion_1016_sqlite.db' #for the OpSim database	
 		OpS.getAllOpSimFields()
@@ -123,12 +127,18 @@ if __name__ == "__main__":
 	worker.OpSim = OpS
 	#worker.OpSim.verbose = True
 
+	galDir = os.path.join(galModelDir, str(rank))
+	if not os.path.exists(galDir):
+		os.makedirs(galDir)
+	worker.galDir = galDir
+
+	ofile = worker.ofile
 	for i in range(len(fields)):
 		#initialize
 		passed = worker.initialize(OpSimi=i) #Note: this will not redo the OpSim class, because we've set it above
 
 		#set up the output file
-		worker.ofile = 'output_files/'+str(int(worker.OpSim.fieldID[i])).zfill(4) + worker.ofile
+		worker.ofile = 'output_files/'+str(int(worker.OpSim.fieldID[i])).zfill(4) + ofile
 		csvfile = open(worker.ofile, 'wt')	
 		worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
@@ -168,6 +178,6 @@ if __name__ == "__main__":
 		
 
 
-	csvfile.close()
+		csvfile.close()
 
 
