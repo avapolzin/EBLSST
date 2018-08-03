@@ -47,8 +47,13 @@ import sys
 p = sys.path
 sys.path = [os.path.join(os.getcwd(),'vespa_update')] + p
 print(f"PATH = {sys.path}")
+cmd = "which get_trilegal"
+proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+print(proc.communicate())
+
 #extinction will allow me to convert A_V to any wavelength.  Not sure which reference is best.  I will use ccm89, for now. 
 #import extinction
+
 #could use this instead, seems to be linked more closely to astropy : https://dust-extinction.readthedocs.io/en/latest/index.html
 #pip install git+https://github.com/karllark/dust_extinction.git
 from dust_extinction.parameter_averages import F04
