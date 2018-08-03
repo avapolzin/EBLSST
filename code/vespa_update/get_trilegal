@@ -36,8 +36,8 @@ while () {
   print "get_trilegal sent request to $webserver\n";
   if (-s "${outputdir}/tmpfile") {
     open (TMP,"${outputdir}/tmpfile");
-    while ($_=<TMP>) {
-      print "$_\n";
+    while (<TMP>) {
+      print $_;
       if (/output\d/) {
         last;
       } else {
@@ -50,6 +50,7 @@ while () {
     `sleep 120`;
   }
 }
+close TMP;
 
 open (TMP,"${outputdir}/tmpfile");
 while ($_=<TMP>) {
