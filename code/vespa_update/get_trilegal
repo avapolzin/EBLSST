@@ -65,4 +65,4 @@ while () {
 }
 `rm -f ${outputdir}/lixo ${outputdir}/tmpfile`;
 `mv ${outputdir}/$filename $outputfile`;
-print "results copied to $outputfile\n";
+print "results copied to ${outputdir}/$outputfile\n";
