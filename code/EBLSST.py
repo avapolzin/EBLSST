@@ -313,6 +313,7 @@ class EclipsingBinary(object):
 			return (0.04 - self.sigmaDict[filt]['gamma'])*(10**(0.4*(magnitude - m_5))) + self.sigmaDict[filt]['gamma']*((10**(0.4*(magnitude - m_5)))**2)*(magnitude**2)
 
 		# Function to get y-band LDCs for any Teff, logg, M_H
+		#written by Andrew Bowen, Northwestern undergraduate, funded by LSSTC grant (summer 2018)
 		def get_y_LDC(Teff, logg, M_H):
 			
 			# All filters/wavelength arrays
