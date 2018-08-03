@@ -84,6 +84,7 @@ def get_trilegal(filename,ra,dec,folder='.', galactic=False,
     if os.path.isabs(filename):
         folder = ''
 
+    print("vespa", filename, folder)
     if not re.search('\.dat$',filename):
         outfile = '{}/{}.dat'.format(folder,filename)
     else:
