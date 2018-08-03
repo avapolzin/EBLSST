@@ -34,7 +34,15 @@ $mainparams = ($version eq "1.6beta" || $version eq "1.6") ?
 while () {
   $tr = `wget -o ${outputdir}/lixo -O${outputdir}/tmpfile --post-data='submit_form=Submit&trilegal_version=${version}&gal_coord=1&gc_l=${gal_l}&gc_b=${gal_b}&eq_alpha=0&eq_delta=0&field=${area}&photsys_file=tab_mag_odfnew%2Ftab_mag_${system}.dat&icm_lim=${icmlim}&mag_lim=${maglim}&mag_res=0.1&binary_kind=${use_binaries}&${mainparams}' ${webserver}/cgi-bin/trilegal_${version}`;
   if (-s "${outputdir}/tmpfile") {
-    last;
+    open (TMP,"${outputdir}/tmpfile");
+    while ($_=<TMP>) {
+      if (/output\d/) {
+        last;
+      } else {
+        print "No communication with $webserver, will retry in 2 min\n";
+        `sleep 120`;
+      }
+    }
   } else {
     print "No communication with $webserver, will retry in 2 min\n";
     `sleep 120`;
