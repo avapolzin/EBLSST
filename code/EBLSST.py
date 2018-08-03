@@ -46,6 +46,8 @@ from vespa_update import trilegal
 import sys
 p = sys.path
 sys.path = [os.path.join(os.getcwd(),'vespa_update')] + p
+#check that it recognizes the correct paths and executables
+import subprocess
 print(f"PATH = {sys.path}")
 cmd = "which get_trilegal"
 proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
