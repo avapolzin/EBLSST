@@ -48,7 +48,7 @@ p = os.environ['PATH']
 pv = os.path.join(os.getcwd(),'vespa_update')
 p2 = pv+':'+p
 os.environ['PATH'] = p2
-print(f'PATH={os.environ['PATH']}')
+print(f"PATH={os.environ['PATH']}")
 #check that it recognizes the correct paths and executables
 cmd = 'echo $PATH'
 proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
