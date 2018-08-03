@@ -42,6 +42,11 @@ import emcee
 
 #for TRILEGAL and maybe also A_V
 import vespa
+from vespa_update import trilegal
+import sys
+p = sys.path
+sys.path = [os.path.join(os.getcwd(),'vespa_update')] + p
+print(f"PATH = {sys.path}")
 #extinction will allow me to convert A_V to any wavelength.  Not sure which reference is best.  I will use ccm89, for now. 
 #import extinction
 #could use this instead, seems to be linked more closely to astropy : https://dust-extinction.readthedocs.io/en/latest/index.html
