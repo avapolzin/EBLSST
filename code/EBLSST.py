@@ -312,6 +312,37 @@ class EclipsingBinary(object):
 			m_5 = self.sigmaDict[filt]['C_m'] + (0.50*(self.sigmaDict[filt]['m_sky'] - 21.)) + (2.50*np.log10(0.7/self.sigmaDict[filt]['seeing'])) + (1.25*np.log10(t_vis/30.)) - (self.sigmaDict[filt]['k_m']*(X-1.))
 			return (0.04 - self.sigmaDict[filt]['gamma'])*(10**(0.4*(magnitude - m_5))) + self.sigmaDict[filt]['gamma']*((10**(0.4*(magnitude - m_5)))**2)*(magnitude**2)
 
+		# Function to get y-band LDCs for any Teff, logg, M_H
+		def get_y_LDC(Teff, logg, M_H):
+			
+			# All filters/wavelength arrays
+			SDSSfilters = ['u_','g_','r_','i_','z_', "J", 'H', "K" ]  #Only 2MASS/SDSS filters (8 in total)
+			SDSSwavelength = np.array([354, 464, 621.5, 754.5, 870, 1220, 1630, 2190])
+			y_wavelength = np.array(1004)
+			
+			# Getting coefficients from ELLC and appending them to specific coeff arrays
+			SDSSfiltVals = np.array([])
+			a1_array = np.array([])
+			a2_array = np.array([])
+			a3_array = np.array([])
+			a4_array = np.array([])
+			# Gets LDCs for all filters
+			for w,f in zip(SDSSwavelength, SDSSfilters):
+				ldy_filt = ellc.ldy.LimbGravityDarkeningCoeffs(f)
+				a1, a2, a3, a4, y = ldy_filt(Teff, logg, M_H)
+				a1_array = np.append(a1_array, a1)
+				a2_array = np.append(a2_array, a2)
+				a3_array = np.append(a3_array, a3)
+				a4_array = np.append(a4_array, a4)
+
+			# Sets up interpolation for y-band for each coeff
+			find_y_a1 = np.interp(y_wavelength, SDSSwavelength, a1_array)
+			find_y_a2 = np.interp(y_wavelength, SDSSwavelength, a2_array)
+			find_y_a3 = np.interp(y_wavelength, SDSSwavelength, a3_array)
+			find_y_a4 = np.interp(y_wavelength, SDSSwavelength, a4_array)
+			
+			return find_y_a1, find_y_a2, find_y_a3, find_y_a4
+	
 		self.appMagObs[filt] = [None]
 		self.deltaMag[filt] = [None]
 
@@ -320,20 +351,18 @@ class EclipsingBinary(object):
 			self.initialize()
 
 		#limb darkenning
-		##########################
-		#Can we find limb darkening coefficients for y band??  (Then we wouldn't need this trick)
-		##########################
-		filtellc = filt
-		if (filt == 'y_'):
-			filtellc = 'z_' #because we don't have limb darkening for y_
-		ldy_filt = ellc.ldy.LimbGravityDarkeningCoeffs(filtellc)
 		T1 = np.clip(self.T1, 3500., 50000.)
 		T2 = np.clip(self.T2, 3500., 50000.)
 		g1 = np.clip(self.g1, 0., 5.)
 		g2 = np.clip(self.g2, 0., 5.)
 		# print(T1, T2, g1, g2, self.g1, self.g2, self.M_H)
-		a1_1, a2_1, a3_1, a4_1, y = ldy_filt(T1, g1, self.M_H)
-		a1_2, a2_2, a3_2, a4_2, y = ldy_filt(T2, g2, self.M_H)
+		if (filt == 'y_'):
+			a1_1, a2_1, a3_1, a4_1, y = get_y_LDC(T1, g1, self.M_H)
+			a1_2, a2_2, a3_2, a4_2, y = get_y_LDC(T2, g2, self.M_H)
+		else:
+			ldy_filt = ellc.ldy.LimbGravityDarkeningCoeffs(filtellc)
+			a1_1, a2_1, a3_1, a4_1, y = ldy_filt(T1, g1, self.M_H)
+			a1_2, a2_2, a3_2, a4_2, y = ldy_filt(T2, g2, self.M_H)
 		ldc_1 = [a1_1, a2_1, a3_1, a4_1] 
 		ldc_2 = [a1_2, a2_2, a3_2, a4_2]
 		# print(ldc_1, ldc_2)
