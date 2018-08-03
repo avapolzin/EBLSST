@@ -1028,7 +1028,7 @@ class TRILEGAL(object):
 
 		if (self.shuffle):
 			self.model = self.model.sample(frac=1).reset_index(drop=True)
-		os.remove(self.tmpfname)
+		os.remove(os.path.join(self.tmpdir,self.tmpfname))
 
 		data = np.vstack((self.model['logL'].values, self.model['logTe'].values, self.model['logg'].values, \
 						self.model['logDist'].values, self.model['Av'].values, self.model['[M/H]'].values))
