@@ -43,13 +43,15 @@ import emcee
 #for TRILEGAL and maybe also A_V
 import vespa
 from vespa_update import trilegal
-import sys
-p = sys.path
-sys.path = [os.path.join(os.getcwd(),'vespa_update')] + p
-#check that it recognizes the correct paths and executables
 import subprocess
-print(f"PATH = {sys.path}")
-cmd = "which get_trilegal"
+p = os.path.join(os.getcwd(),'vespa_update')
+cmd = f'export PATH="{p}"$PATH'
+proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+#check that it recognizes the correct paths and executables
+cmd = 'echo $PATH'
+proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
+print(proc.communicate())
+cmd = 'which get_trilegal'
 proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE)
 print(proc.communicate())
 
