@@ -313,7 +313,7 @@ class EclipsingBinary(object):
 			return (0.04 - self.sigmaDict[filt]['gamma'])*(10**(0.4*(magnitude - m_5))) + self.sigmaDict[filt]['gamma']*((10**(0.4*(magnitude - m_5)))**2)*(magnitude**2)
 
 		# Function to get y-band LDCs for any Teff, logg, M_H
-		#written by Andrew Bowen, Northwestern undergraduate, funded by LSSTC grant (summer 2018)
+		# written by Andrew Bowen, Northwestern undergraduate, funded by LSSTC grant (summer 2018)
 		def get_y_LDC(Teff, logg, M_H):
 			
 			# All filters/wavelength arrays
@@ -342,7 +342,7 @@ class EclipsingBinary(object):
 			find_y_a3 = np.interp(y_wavelength, SDSSwavelength, a3_array)
 			find_y_a4 = np.interp(y_wavelength, SDSSwavelength, a4_array)
 			
-			return find_y_a1[0], find_y_a2[0], find_y_a3[0], find_y_a4[0]
+			return find_y_a1, find_y_a2, find_y_a3, find_y_a4
 	
 		self.appMagObs[filt] = [None]
 		self.deltaMag[filt] = [None]
@@ -361,7 +361,7 @@ class EclipsingBinary(object):
 			a1_1, a2_1, a3_1, a4_1 = get_y_LDC(T1, g1, self.M_H)
 			a1_2, a2_2, a3_2, a4_2 = get_y_LDC(T2, g2, self.M_H)
 		else:
-			ldy_filt = ellc.ldy.LimbGravityDarkeningCoeffs(filtellc)
+			ldy_filt = ellc.ldy.LimbGravityDarkeningCoeffs(filt)
 			a1_1, a2_1, a3_1, a4_1, y = ldy_filt(T1, g1, self.M_H)
 			a1_2, a2_2, a3_2, a4_2, y = ldy_filt(T2, g2, self.M_H)
 		ldc_1 = [a1_1, a2_1, a3_1, a4_1] 
@@ -1484,7 +1484,7 @@ class LSSTEBworker(object):
 		EB.t_zero = np.random.random() * EB.period
 
 		#for observations
-		EB.useOpSimDate = self.useOpSimDates
+		EB.useOpSimDates = self.useOpSimDates
 		EB.years = self.years
 		EB.totaltime = self.totaltime 
 		EB.cadence= self.cadence 
