@@ -54,7 +54,7 @@ $filename = $code . ".dat";
 print "retrieving data from $filename ...\n";
 while () {
   `sleep 40`;
-  `wget -o ${outputdir}/lixo -O$filename ${webserver}/tmp/$filename`;
+  `wget -o ${outputdir}/lixo -O${outputdir}/$filename ${webserver}/tmp/$filename`;
   $_=`tail -1 $filename`;
   if (/normally/) {
     print "model downloaded!..\n";
@@ -64,5 +64,5 @@ while () {
   }
 }
 `rm -f ${outputdir}/lixo ${outputdir}/tmpfile`;
-`mv $filename $outputfile`;
+`mv ${outputdir}/$filename $outputfile`;
 print "results copied to $outputfile\n";
