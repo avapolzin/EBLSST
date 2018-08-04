@@ -1,0 +1,6 @@
+--2018-08-04 16:30:52--  http://stev.oapd.inaf.it/tmp/.dat
+Resolving stev.oapd.inaf.it (stev.oapd.inaf.it)... 193.206.241.134
+Connecting to stev.oapd.inaf.it (stev.oapd.inaf.it)|193.206.241.134|:80... connected.
+HTTP request sent, awaiting response... 404 Not Found
+2018-08-04 16:30:53 ERROR 404: Not Found.
+

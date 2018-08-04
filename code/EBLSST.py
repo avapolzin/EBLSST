@@ -537,8 +537,8 @@ class EclipsingBinary(object):
 					self.obsDates[filt] = self.OpSim.obsDates[self.OpSimi][filt]
 
 			#otherwise get them
-			if (filt not in self.ObsDates):
-				self.obsDates[filt] = self.OpSim.getDates(filt)
+			if (filt not in self.obsDates):
+				self.obsDates[filt] = self.OpSim.getDates(self.OpSim.fieldID[self.OpSimi], filt)
 
 			if (self.verbose):
 				print(f'observing with OpSim in filter {filt}, have {len(self.obsDates[filt])} observations')
@@ -1067,8 +1067,8 @@ class TRILEGAL(object):
 				filterset=self.filterset, area=self.area, maglim=self.maglim, binaries=self.binaries, \
 				trilegal_version='1.6', sigma_AV=self.sigma_AV, convert_h5=True)
 			if (not passed):
-				area /= 1.1
-				print("reducing TRILEGAL area to {area}...")
+				self.area *= 0.9
+				print("reducing TRILEGAL area to {self.area}...")
 		self.model = pd.read_hdf(os.path.join(self.tmpdir,self.tmpfname))
 		self.Nstars = len(self.model)
 
