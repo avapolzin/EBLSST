@@ -45,7 +45,10 @@ while () {
 
 open (TMP,"${outputdir}/tmpfile");
 while ($_=<TMP>) {
-  goto GET_MODEL if (/busy\d/);
+  if (/busy/){
+    close TMP;
+    goto GET_MODEL;
+  }
   last if (/output\d/);
 }
 $tr=$_;
