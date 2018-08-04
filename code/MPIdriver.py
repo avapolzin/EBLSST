@@ -8,6 +8,8 @@ from mpi4py import MPI
 import os
 import time
 
+
+
 def define_args():
 	parser = argparse.ArgumentParser()
 
@@ -110,6 +112,8 @@ if __name__ == "__main__":
 	worker.GalaxyFile = '/projects/p30137/ageller/EBLSST/input/Breivik/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
 	worker.GalaxyFileLogPrefix ='/projects/p30137/ageller/EBLSST/input/Breivik/fixedPopLogCm_'
 	worker.filterFilesRoot = '/projects/p30137/ageller/EBLSST/input/filters/'
+	os.environ['PYSYN_CDBS'] = '/projects/p30137/ageller/PySynphotData'
+	print(f"PYSYN_CDBS environ = {os.environ['PYSYN_CDBS']}")
 	#check for command-line arguments
 	apply_args(worker, args)	
 	if (worker.seed == None):
@@ -154,7 +158,7 @@ if __name__ == "__main__":
 
 		if (passed):
 
-			print(worker.BreivikGal)
+			print("worker.BreivikGal:",worker.BreivikGal)
 
 			#run through ellc and gatspy
 			gxDat = worker.sampleBreivikGal()
