@@ -102,7 +102,7 @@ if __name__ == "__main__":
 		if (nfieldsPerCore*size < nfields):
 			print("adding to rank 0")
 			extra = np.vstack((OpS.fieldID[maxIndex:], OpS.RA[maxIndex:], OpS.Dec[maxIndex:])).T
-			fieldData = np.vstack(fieldData, extra)
+			fieldData = np.vstack((fieldData, extra))
 
 	#define the worker
 	worker = LSSTEBworker()
