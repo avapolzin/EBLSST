@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 from mpi4py import MPI
 import os
+import time
 
 def define_args():
 	parser = argparse.ArgumentParser()
@@ -133,6 +134,9 @@ if __name__ == "__main__":
 	if not os.path.exists(galDir):
 		os.makedirs(galDir)
 	worker.galDir = galDir
+
+	#add a delay here to help with the get_trilegal pileup?
+	time.sleep(5*rank)
 
 	ofile = worker.ofile
 	for i in range(len(fields)):
