@@ -60,6 +60,7 @@ if ($tr =~ /(output\d+)/){
 }
 $filename = $code . ".dat";
 print "retrieving data from $filename ...\n";
+$time1 = time;
 while () {
   `sleep 40`;
   `wget -o ${outputdir}/lixo -O${outputdir}/$filename ${webserver}/tmp/$filename`;
@@ -68,9 +69,13 @@ while () {
     print "model downloaded!..\n";
     last;
   } else {
+    if (time - $time1 > 600){
+      goto THE_END;
+    }
     print "still running...\n";
   }
 }
 `rm -f ${outputdir}/lixo ${outputdir}/tmpfile`;
 `mv ${outputdir}/$filename $outputfile`;
 print "results copied to ${outputdir}/$outputfile\n";
+THE_END:

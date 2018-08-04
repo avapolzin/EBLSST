@@ -93,6 +93,8 @@ def get_trilegal(filename,ra,dec,folder='.', galactic=False,
                                                                   area,binaries,AV,sigma_AV,
                                                                   filterset,maglim,outfile,folder)
     sp.Popen(cmd,shell=True).wait()
+    if not os.path.exists(outfile):
+        return False
     if convert_h5:
         df = pd.read_table(outfile, sep='\s+', skipfooter=1, engine='python')
         df = df.rename(columns={'#Gc':'Gc'})
@@ -114,3 +116,4 @@ def get_trilegal(filename,ra,dec,folder='.', galactic=False,
                                    'maglim':maglim,
                                    'binaries':binaries}
         os.remove(outfile)
+    return True

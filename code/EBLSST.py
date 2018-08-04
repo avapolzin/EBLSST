@@ -614,15 +614,14 @@ class OpSim(object):
 
 		self.fieldID = dbID
 
-	def getDates(self, filtin):
+	def getDates(self, ID, filtin):
 		#matches FieldID to existing OpSim database ID and matches observation filters to get dates (in seconds since the start of the 
 		# survey)
 		FieldID = self.summaryCursor[:,0].astype('int')
 		date = self.summaryCursor[:,1].astype('float')
 		filt = self.summaryCursor[:,2]
 
-		posIDFilt = np.where(np.logical_and(FieldID == self.fieldID, filt == filtin[:-1]))
-
+		posIDFilt = np.where(np.logical_and(FieldID == ID, filt == filtin[:-1]))
 		if (self.verbose):
 			print("posIDFilt = ", posIDFilt, filtin)
 
@@ -641,7 +640,7 @@ class OpSim(object):
 		self.NobsDates[i] = dict()
 		self.totalNobs[i] = 0
 		for filt in filters:
-			self.obsDates[i][filt] = self.getDates(filt)
+			self.obsDates[i][filt] = self.getDates(self.fieldID[i], filt)
 			self.NobsDates[i][filt] = 0
 			if (self.obsDates[i][filt][0] != None):
 				self.NobsDates[i][filt] = len(self.obsDates[i][filt])
@@ -1062,9 +1061,14 @@ class TRILEGAL(object):
 
 	def setModel(self):
 		print(f'downloading TRILEGAL model for ID={self.fieldID}, RA={self.RA}, DEC={self.Dec}')
-		trilegal_update.get_trilegal(self.tmpfname, self.RA, self.Dec, folder=self.tmpdir, galactic=False, \
-			filterset=self.filterset, area=self.area, maglim=self.maglim, binaries=self.binaries, \
-			trilegal_version='1.6', sigma_AV=self.sigma_AV, convert_h5=True)
+		passed = False
+		while (not passed):
+			passed = trilegal_update.get_trilegal(self.tmpfname, self.RA, self.Dec, folder=self.tmpdir, galactic=False, \
+				filterset=self.filterset, area=self.area, maglim=self.maglim, binaries=self.binaries, \
+				trilegal_version='1.6', sigma_AV=self.sigma_AV, convert_h5=True)
+			if (not passed):
+				area /= 1.1
+				print("reducing TRILEGAL area to {area}...")
 		self.model = pd.read_hdf(os.path.join(self.tmpdir,self.tmpfname))
 		self.Nstars = len(self.model)
 
@@ -1672,15 +1676,6 @@ class LSSTEBworker(object):
 			#get the OpSim fields
 			self.OpSim.getAllOpSimFields()
 
-		#still want galaxy to get total number of stars, even if we're not observing it
-		if (self.Galaxy == None):
-			self.Galaxy = TRILEGAL()
-			self.Galaxy.RA = self.OpSim.RA[OpSimi]
-			self.Galaxy.Dec = self.OpSim.Dec[OpSimi]
-			self.Galaxy.fieldID = self.OpSim.fieldID[OpSimi]
-			self.Galaxy.tmpdir = self.galDir
-			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(int(self.OpSim.fieldID[OpSimi]))+'.h5'
-			self.Galaxy.setModel()	
 
 		#check if we need to run this
 		if (self.useOpSimDates):
@@ -1689,6 +1684,15 @@ class LSSTEBworker(object):
 			if (self.OpSim.totalNobs[OpSimi] < self.NobsLim):
 				return False
 
+		#I need to move this up if I still want galaxy to get total number of stars, even if we're not observing it
+		if (self.Galaxy == None):
+			self.Galaxy = TRILEGAL()
+			self.Galaxy.RA = self.OpSim.RA[OpSimi]
+			self.Galaxy.Dec = self.OpSim.Dec[OpSimi]
+			self.Galaxy.fieldID = self.OpSim.fieldID[OpSimi]
+			self.Galaxy.tmpdir = self.galDir
+			self.Galaxy.tmpfname = 'TRILEGAL_model_fID'+str(int(self.OpSim.fieldID[OpSimi]))+'.h5'
+			self.Galaxy.setModel()	
 
 		if (self.Breivik == None):
 			self.Breivik = BreivikGalaxy()
