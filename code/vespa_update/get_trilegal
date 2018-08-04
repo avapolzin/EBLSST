@@ -47,7 +47,7 @@ open (TMP,"${outputdir}/tmpfile");
 while ($_=<TMP>) {
   if (/busy/){
     close TMP;
-    print "server is busy, will retry...";
+    print "server is busy, will retry...\n";
     goto GET_MODEL;
   }
   last if (/output\d/);
