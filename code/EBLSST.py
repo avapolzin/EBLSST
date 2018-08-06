@@ -1079,7 +1079,7 @@ class TRILEGAL(object):
 				self.area *= 0.9
 				print("reducing TRILEGAL area to {self.area}...")
 		self.model = pd.read_hdf(os.path.join(self.tmpdir,self.tmpfname))
-		self.Nstars = len(self.model) * (self.area0/self.area)**2.
+		self.Nstars = len(self.model) * (area0/self.area)**2.
 
 		#add the distance
 		logDist = np.log10( 10.**(self.model['m-M0'].values/5.) *10. / 1000.) #log(d [kpc])
@@ -1518,7 +1518,7 @@ class LSSTEBworker(object):
 
 
 	def writeOutputLine(self, EB, OpSimi=0, header = False, noRun = False):
-		cols = ['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD']
+		cols = ['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'Av', '[M/H]','nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD']
 		if (header):
 			#print(self.useOpSimDates, self.Galaxy, self.OpSim)
 			ng = 0
@@ -1535,7 +1535,7 @@ class LSSTEBworker(object):
 			output = [-1 for x in range(len(cols))]
 
 		else:
-			output = [EB.period, EB.m1, EB.m2, EB.r1, EB.r2, EB.eccentricity, EB.inclination, EB.dist, EB.nobs, EB.appMagMeanAll, EB.maxDeltaMag, EB.appmag_failed, EB.incl_failed, EB.period_failed, EB.radius_failed]
+			output = [EB.period, EB.m1, EB.m2, EB.r1, EB.r2, EB.eccentricity, EB.inclination, EB.dist, EB.nobs, EB.AV, EB.M_H, EB.appMagMeanAll, EB.maxDeltaMag, EB.appmag_failed, EB.incl_failed, EB.period_failed, EB.radius_failed]
 
 			#this is for gatspt
 			for filt in self.filters:
