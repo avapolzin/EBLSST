@@ -112,7 +112,7 @@ if __name__ == "__main__":
 	worker.GalaxyFile = '/projects/p30137/ageller/EBLSST/input/Breivik/dat_ThinDisk_12_0_12_0.h5' #for Katie's model
 	worker.GalaxyFileLogPrefix ='/projects/p30137/ageller/EBLSST/input/Breivik/fixedPopLogCm_'
 	worker.filterFilesRoot = '/projects/p30137/ageller/EBLSST/input/filters/'
-	os.environ['PYSYN_CDBS'] = '/projects/p30137/ageller/PySynphotData'
+	#os.environ['PYSYN_CDBS'] = '/projects/p30137/ageller/PySynphotData'
 	print(f"PYSYN_CDBS environ = {os.environ['PYSYN_CDBS']}")
 	#check for command-line arguments
 	apply_args(worker, args)	
@@ -145,6 +145,7 @@ if __name__ == "__main__":
 	ofile = worker.ofile
 	for i in range(len(fields)):
 		#initialize
+		print(f"RANK={rank}, OpSimi={i}")
 		passed = worker.initialize(OpSimi=i) #Note: this will not redo the OpSim class, because we've set it above
 
 		#set up the output file
@@ -162,25 +163,26 @@ if __name__ == "__main__":
 
 			#run through ellc and gatspy
 			gxDat = worker.sampleBreivikGal()
-			for i, line in enumerate(gxDat):
-				line = gxDat[i]
+			for j, line in enumerate(gxDat):
+				line = gxDat[j]
 
 				#define the binary parameters
-				EB = worker.getEB(line, i)
-				EB.lineNum = i
-				print(rank, i, EB.period)
+				EB = worker.getEB(line, OpSimi=i)
+				print(f"RANK={rank}, OpSimi={i}, linej={j}, pb={EB.period}")
 
 				if (EB.observable):
 					worker.return_dict[j] = EB
 					worker.run_ellc_gatspy(j)
 					EB = worker.return_dict[j]
 
-			worker.writeOutputLine(EB)
-			csvfile.flush()
+				worker.writeOutputLine(EB)
+				csvfile.flush()
 		else:
 			worker.writeOutputLine(None, OpSimi=i, noRun=True)
 			csvfile.flush()
 
+
+		csvfile.close()
 
 		#get ready for the next field
 		worker.Galaxy = None
@@ -188,6 +190,5 @@ if __name__ == "__main__":
 		
 
 
-		csvfile.close()
 
 

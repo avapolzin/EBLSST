@@ -89,7 +89,6 @@ class EclipsingBinary(object):
 		self.xGx = None #*units.parsec
 		self.yGx = None #*units.parsec
 		self.zGx = None #*units.parsec
-		self.lineNum = 0
 		self.verbose = False
 		self.RV = 3.1
 		self.M_H = 0. #metallicity
@@ -161,7 +160,6 @@ class EclipsingBinary(object):
 		self.incl_failed = 0
 		self.period_failed = 0
 		self.radius_failed = 0
-		self.OpSimID = None
 		self.OpSimi = 0
 		self.years = 10.
 		self.totaltime = 365.* self.years
@@ -356,14 +354,15 @@ class EclipsingBinary(object):
 		T2 = np.clip(self.T2, 3500., 50000.)
 		g1 = np.clip(self.g1, 0., 5.)
 		g2 = np.clip(self.g2, 0., 5.)
+		MH = np.clip(self.M_H, -2.5, 0.5) 
 		# print(T1, T2, g1, g2, self.g1, self.g2, self.M_H)
 		if (filt == 'y_'):
-			a1_1, a2_1, a3_1, a4_1 = get_y_LDC(T1, g1, self.M_H)
-			a1_2, a2_2, a3_2, a4_2 = get_y_LDC(T2, g2, self.M_H)
+			a1_1, a2_1, a3_1, a4_1 = get_y_LDC(T1, g1, MH)
+			a1_2, a2_2, a3_2, a4_2 = get_y_LDC(T2, g2, MH)
 		else:
 			ldy_filt = ellc.ldy.LimbGravityDarkeningCoeffs(filt)
-			a1_1, a2_1, a3_1, a4_1, y = ldy_filt(T1, g1, self.M_H)
-			a1_2, a2_2, a3_2, a4_2, y = ldy_filt(T2, g2, self.M_H)
+			a1_1, a2_1, a3_1, a4_1, y = ldy_filt(T1, g1, MH)
+			a1_2, a2_2, a3_2, a4_2, y = ldy_filt(T2, g2, MH)
 		ldc_1 = [a1_1, a2_1, a3_1, a4_1] 
 		ldc_2 = [a1_2, a2_2, a3_2, a4_2]
 		# print(ldc_1, ldc_2)
@@ -377,11 +376,20 @@ class EclipsingBinary(object):
 		# print(self.t_zero, self.period, self.a, self.q,
 		# 	self.R_1, self.R_2, self.inclination, self.sbratio)
 		#This is in arbitrary units... H ow do we get this into real units??
-		lc = ellc.lc(self.obsDates[filt], ldc_1=ldc_1, ldc_2=ldc_2, 
-			t_zero=self.t_zero, period=self.period, a=self.a, q=self.q,
-			f_c=self.f_c, f_s=self.f_s, ld_1=self.ld_1,  ld_2=self.ld_2,
-			radius_1=self.R_1, radius_2=self.R_2, incl=self.inclination, sbratio=self.sbratio, 
-			shape_1=self.shape_1, shape_2=self.shape_2, grid_1=self.grid_1,grid_2=self.grid_2) 
+		if (np.isfinite(ldc_1[0]) and np.isfinite(ldc_2[0])):
+			lc = ellc.lc(self.obsDates[filt], ldc_1=ldc_1, ldc_2=ldc_2, 
+				t_zero=self.t_zero, period=self.period, a=self.a, q=self.q,
+				f_c=self.f_c, f_s=self.f_s, ld_1=self.ld_1,  ld_2=self.ld_2,
+				radius_1=self.R_1, radius_2=self.R_2, incl=self.inclination, sbratio=self.sbratio, 
+				shape_1=self.shape_1, shape_2=self.shape_2, grid_1=self.grid_1,grid_2=self.grid_2) 
+		else:
+			print(f"WARNING: nan's in ldc filter={filt}, ldc_1={ldc_1}, T1={T1}, logg1={g1}, ldc_2={ldc_2}, T2={T2}, logg2={g2}, [M/H]={MH})")
+			lc = ellc.lc(self.obsDates[filt], 
+				t_zero=self.t_zero, period=self.period, a=self.a, q=self.q,
+				f_c=self.f_c, f_s=self.f_s, 
+				radius_1=self.R_1, radius_2=self.R_2, incl=self.inclination, sbratio=self.sbratio,
+				shape_1=self.shape_1, shape_2=self.shape_2, grid_1=self.grid_1,grid_2=self.grid_2)
+
 		lc = lc/np.max(lc) #maybe there's a better normalization?
 
 		if (min(lc) > 0):
@@ -524,7 +532,7 @@ class EclipsingBinary(object):
 
 		#if we're using OpSim, then get the field ID
 		#get the field ID number from OpSim where this binary would be observed
-		if (self.useOpSimDates and self.observable and self.OpSimID == None):
+		if (self.useOpSimDates and self.observable and self.OpSim.fieldID[0] == None):
 			self.OpSim.setFieldID(self.RA, self.Dec)
 
 	def observe(self, filt):
@@ -563,13 +571,13 @@ class OpSim(object):
 		self.fieldCursor = None
 		self.summaryCursor = None
 
-		self.fieldID = None
-		self.RA = None
-		self.Dec = None
-		self.Nobs = None
-		self.obsDates = None
-		self.NobsDates = None
-		self.totalNobs = None
+		self.fieldID = [None]
+		self.RA = [None]
+		self.Dec = [None]
+		self.Nobs = [None]
+		self.obsDates = [None]
+		self.NobsDates = [None]
+		self.totalNobs = [None]
 
 	#database manipulation
 	def getCursors(self):
@@ -612,7 +620,7 @@ class OpSim(object):
 		if (self.verbose):
 			print("have Field ID", dbID)
 
-		self.fieldID = dbID
+		self.fieldID = [dbID]
 
 	def getDates(self, ID, filtin):
 		#matches FieldID to existing OpSim database ID and matches observation filters to get dates (in seconds since the start of the 
@@ -1062,6 +1070,7 @@ class TRILEGAL(object):
 	def setModel(self):
 		print(f'downloading TRILEGAL model for ID={self.fieldID}, RA={self.RA}, DEC={self.Dec}')
 		passed = False
+		area0 = self.area
 		while (not passed):
 			passed = trilegal_update.get_trilegal(self.tmpfname, self.RA, self.Dec, folder=self.tmpdir, galactic=False, \
 				filterset=self.filterset, area=self.area, maglim=self.maglim, binaries=self.binaries, \
@@ -1070,7 +1079,7 @@ class TRILEGAL(object):
 				self.area *= 0.9
 				print("reducing TRILEGAL area to {self.area}...")
 		self.model = pd.read_hdf(os.path.join(self.tmpdir,self.tmpfname))
-		self.Nstars = len(self.model)
+		self.Nstars = len(self.model) * (self.area0/self.area)**2.
 
 		#add the distance
 		logDist = np.log10( 10.**(self.model['m-M0'].values/5.) *10. / 1000.) #log(d [kpc])
@@ -1243,7 +1252,7 @@ class SED(object):
 			self.specModelName = 'ck04models'
 			g = np.clip(self.logg, 3, 5.)
 			T = np.clip(self.T.to(units.K).value, 3500., 50000.0)
-			MH = np.clip(self.M_H, -4, 0.5) #not sure what the lower limit is here, but this seems reasonable
+			MH = np.clip(self.M_H, -2.5, 0.5) 
 			# else:
 			# 	#phoenix for cooler stars, but appear to be giving more discrepant results than just using the Kurucz model
 			# 	self.specModelName = 'phoenix'
@@ -1406,7 +1415,7 @@ class LSSTEBworker(object):
 				drng = max(EB.obsDates[filt]) - min(EB.obsDates[filt])
 				#print("filter, nobs", filt, len(EB.obsDates[filt]))
 				if (self.useFast and len(EB.obsDates[filt]) > 50):
-					model = LombScargleFast(fit_period = True)
+					model = LombScargleFast(fit_period = True, silence_warnings=True)
 				else:
 					model = LombScargle(fit_period = True)
 				model.optimizer.period_range = (0.2, drng)
@@ -1511,11 +1520,14 @@ class LSSTEBworker(object):
 	def writeOutputLine(self, EB, OpSimi=0, header = False, noRun = False):
 		cols = ['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD']
 		if (header):
-			print(self.useOpSimDates, self.Galaxy, self.OpSim)
-			if (self.useOpSimDates and self.Galaxy != None and self.OpSim != None):
+			#print(self.useOpSimDates, self.Galaxy, self.OpSim)
+			ng = 0
+			if (self.Galaxy != None):
+				ng = self.Galaxy.Nstars
+			if (self.useOpSimDates and self.OpSim != None):
 				print("writing header")
 				self.csvwriter.writerow(['OpSimID','OpSimRA','OpSimDec','NstarsTRILEGAL', 'NOpSimObs_u', 'NOpSimObs_g', 'NOpSimObs_r', 'NOpSimObs_i', 'NOpSimObs_z', 'NOpSimObs_y'])
-				self.csvwriter.writerow([self.OpSim.fieldID[OpSimi], self.OpSim.RA[OpSimi], self.OpSim.Dec[OpSimi], self.Galaxy.Nstars, self.OpSim.NobsDates[OpSimi]['u_'], self.OpSim.NobsDates[OpSimi]['g_'], self.OpSim.NobsDates[OpSimi]['r_'], self.OpSim.NobsDates[OpSimi]['i_'], self.OpSim.NobsDates[OpSimi]['z_'], self.OpSim.NobsDates[OpSimi]['y_']])
+				self.csvwriter.writerow([self.OpSim.fieldID[OpSimi], self.OpSim.RA[OpSimi], self.OpSim.Dec[OpSimi], ng, self.OpSim.NobsDates[OpSimi]['u_'], self.OpSim.NobsDates[OpSimi]['g_'], self.OpSim.NobsDates[OpSimi]['r_'], self.OpSim.NobsDates[OpSimi]['i_'], self.OpSim.NobsDates[OpSimi]['z_'], self.OpSim.NobsDates[OpSimi]['y_']])
 
 			output = cols
 
