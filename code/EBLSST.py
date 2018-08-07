@@ -1398,7 +1398,7 @@ class LSSTEBworker(object):
 		allAppMagObs = np.array([])
 		allAppMagObsErr = np.array([])
 		allObsFilters = np.array([])
-
+		minNobs = 1e10
 		if (self.verbose):
 			print("in run_ellc_gatspy")
 
@@ -1413,11 +1413,12 @@ class LSSTEBworker(object):
 
 				#run gatspy for this filter
 				drng = max(EB.obsDates[filt]) - min(EB.obsDates[filt])
+				minNobs = min(minNobs, len(EB.obsDates[filt]))
 				#print("filter, nobs", filt, len(EB.obsDates[filt]))
 				if (self.useFast and len(EB.obsDates[filt]) > 50):
-					model = LombScargleFast(fit_period = True, silence_warnings=True)
+					model = LombScargleFast(fit_period = True, silence_warnings=True, optimizer_kwds={"quiet": True})
 				else:
-					model = LombScargle(fit_period = True)
+					model = LombScargle(fit_period = True, optimizer_kwds={"quiet": True})
 				model.optimizer.period_range = (0.2, drng)
 				model.fit(EB.obsDates[filt], EB.appMagObs[filt], EB.appMagObsErr[filt])
 				EB.LSS[filt] = model.best_period
@@ -1439,10 +1440,10 @@ class LSSTEBworker(object):
 
 		if (len(allObsDates) > 0 and self.doLSM): 
 			drng = max(allObsDates) - min(allObsDates)
-			if (self.useFast and len(allObsDates) > 50*len(self.filters)):
-				model = LombScargleMultibandFast(fit_period = True)
+			if (self.useFast and minNobs > 50):
+				model = LombScargleMultibandFast(fit_period = True, optimizer_kwds={"quiet": True})
 			else:
-				model = LombScargleMultiband(Nterms_band=self.n_band, Nterms_base=self.n_base, fit_period = True)
+				model = LombScargleMultiband(Nterms_band=self.n_band, Nterms_base=self.n_base, fit_period = True, optimizer_kwds={"quiet": True})
 			model.optimizer.period_range = (0.2, drng)
 			model.fit(allObsDates, allAppMagObs, allAppMagObsErr, allObsFilters)
 			EB.LSM = model.best_period
@@ -1518,7 +1519,7 @@ class LSSTEBworker(object):
 
 
 	def writeOutputLine(self, EB, OpSimi=0, header = False, noRun = False):
-		cols = ['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'Av', '[M/H]','nobs','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD']
+		cols = ['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','Av','[M/H]','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD']
 		if (header):
 			#print(self.useOpSimDates, self.Galaxy, self.OpSim)
 			ng = 0

@@ -51,6 +51,13 @@ def apply_args(worker, args):
 	if (args.seed is not None):
 		worker.seed = args.seed
 
+def getFinishedIDs(d='output_files'):
+	#these are not all finished, but this is OK for now
+	if (not os.path.exists(d)):
+		return []
+	files = os.listdir(d)
+	IDs = [int(f[0:4]) for f in files]
+	return IDs
 
 if __name__ == "__main__":
 
@@ -142,47 +149,50 @@ if __name__ == "__main__":
 	#add a delay here to help with the get_trilegal pileup?
 	time.sleep(5*rank)
 
+	finishedIDs = getFinishedIDs()
+
 	ofile = worker.ofile
-	for i in range(len(fields)):
-		#initialize
-		print(f"RANK={rank}, OpSimi={i}")
-		passed = worker.initialize(OpSimi=i) #Note: this will not redo the OpSim class, because we've set it above
+	for i in range(len(fields[0])):
+		if (worker.OpSim.fieldID[i] not in finishedIDs):
+			#initialize
+			print(f"RANK={rank}, OpSimi={i}")
+			passed = worker.initialize(OpSimi=i) #Note: this will not redo the OpSim class, because we've set it above
+	
+			#set up the output file
+			worker.ofile = 'output_files/'+str(int(worker.OpSim.fieldID[i])).zfill(4) + ofile
+			csvfile = open(worker.ofile, 'wt')	
+			worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-		#set up the output file
-		worker.ofile = 'output_files/'+str(int(worker.OpSim.fieldID[i])).zfill(4) + ofile
-		csvfile = open(worker.ofile, 'wt')	
-		worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-
-		#write header
-		worker.writeOutputLine(None, OpSimi=i, header=True)
-		csvfile.flush()
-
-		if (passed):
-
-			print("worker.BreivikGal:",worker.BreivikGal)
-
-			#run through ellc and gatspy
-			gxDat = worker.sampleBreivikGal()
-			for j, line in enumerate(gxDat):
-				line = gxDat[j]
-
-				#define the binary parameters
-				EB = worker.getEB(line, OpSimi=i)
-				print(f"RANK={rank}, OpSimi={i}, linej={j}, pb={EB.period}")
-
-				if (EB.observable):
-					worker.return_dict[j] = EB
-					worker.run_ellc_gatspy(j)
-					EB = worker.return_dict[j]
-
-				worker.writeOutputLine(EB)
-				csvfile.flush()
-		else:
-			worker.writeOutputLine(None, OpSimi=i, noRun=True)
+			#write header
+			worker.writeOutputLine(None, OpSimi=i, header=True)
 			csvfile.flush()
 
+			if (passed):
 
-		csvfile.close()
+				print("worker.BreivikGal:",worker.BreivikGal)
+
+				#run through ellc and gatspy
+				gxDat = worker.sampleBreivikGal()
+				for j, line in enumerate(gxDat):
+					line = gxDat[j]
+	
+					#define the binary parameters
+					EB = worker.getEB(line, OpSimi=i)
+					print(f"RANK={rank}, OpSimi={i}, linej={j}, pb={EB.period}")
+	
+					if (EB.observable):
+						worker.return_dict[j] = EB
+						worker.run_ellc_gatspy(j)
+						EB = worker.return_dict[j]
+	
+					worker.writeOutputLine(EB)
+					csvfile.flush()
+			else:
+				worker.writeOutputLine(None, OpSimi=i, noRun=True)
+				csvfile.flush()
+	
+	
+			csvfile.close()
 
 		#get ready for the next field
 		worker.Galaxy = None
