@@ -426,8 +426,10 @@ class EclipsingBinary(object):
 		if (self.appMagMeanAll <= 11. or self.appMagMeanAll >= 24.):
 			self.appmag_failed = 1
 		
-		min_incl = 90. - np.arctan2(self.r1 + self.r2, 2.*self.a)*180./np.pi
-		if (self.inclination <= min_incl):
+		theta = np.arcsin((self.r1 + self.r2)/(2.*self.a))*180./np.pi
+		min_incl = 90. - theta 
+		max_incl = 90. + theta
+		if (self.inclination <= min_incl or self.inclination >= max_incl):
 			self.incl_failed = 1
 		
 		if (self.period >= self.totaltime):
@@ -984,7 +986,7 @@ class BreivikGalaxy(object):
 		dist = ((xGX-x_sun)**2+(yGX-y_sun)**2+(zGX-z_sun)**2)**(1/2.0)
 		dist_kpc = dist/1000.0
 			
-		inc = np.arccos(2.*np.random.uniform(0,1.0,len(m1)) - 1.)
+		inc = np.arccos(2.*np.random.uniform(0,1,len(m1)) - 1.)
 		OMEGA = np.random.uniform(0,2*math.pi,len(m1))
 		omega = np.random.uniform(0,2*math.pi,len(m1))
 
@@ -1666,7 +1668,7 @@ class LSSTEBworker(object):
 		L2 = 10.**s[8]
 		ecc = s[9]
 		logp = s[10]
-		inc = np.arccos(2.*np.random.uniform(0,1.0,self.n_bin) - 1.)
+		inc = np.arccos(2.*np.random.uniform(0,1,self.n_bin) - 1.)
 		omega = np.random.uniform(0,2*np.pi,self.n_bin)
 		OMEGA = np.random.uniform(0,2*np.pi,self.n_bin)
 		x = np.zeros(self.n_bin)
