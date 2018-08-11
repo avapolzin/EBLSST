@@ -79,3 +79,6 @@ while () {
 `mv ${outputdir}/$filename $outputfile`;
 print "results copied to ${outputdir}/$outputfile\n";
 THE_END:
+if (-s "${outputdir}/$filename") {
+	`rm -f ${outputdir}/$filename`;
+}
