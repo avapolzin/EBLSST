@@ -1079,7 +1079,7 @@ class TRILEGAL(object):
 				trilegal_version='1.6', sigma_AV=self.sigma_AV, convert_h5=True)
 			if (not passed):
 				self.area *= 0.9
-				print("reducing TRILEGAL area to {self.area}...")
+				print(f"reducing TRILEGAL area to {self.area}...")
 		self.model = pd.read_hdf(os.path.join(self.tmpdir,self.tmpfname))
 		self.Nstars = len(self.model) * (area0/self.area)**2.
 
@@ -1477,8 +1477,8 @@ class LSSTEBworker(object):
 		EB.period = 10.**line[2] #days
 		EB.eccentricity = line[3]
 		EB.inclination = line[12] *180./np.pi #degrees
-		EB.OMEGA = line[13] #radians
-		EB.omega = line[14] #radians
+		EB.OMEGA = line[13] *180./np.pi #degrees
+		EB.omega = line[14] *180./np.pi #degrees
 
 		EB.dist = line[11] #kpc
 		if (self.Galaxy == None):
