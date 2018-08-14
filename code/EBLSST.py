@@ -1663,7 +1663,7 @@ class LSSTEBworker(object):
 
 	def sampleBreivikGal(self):
 		ind = range(len(self.BreivikGal))
-		indices = umpy.random.choice(ind, size=self.n_bin, replace=False)
+		indices = np.random.choice(ind, size=self.n_bin, replace=False)
 		s = self.BreivikGal[indices].T
 		#outNames = ['Av', '[M/H]', 'logD', logm1', 'logr1', 'logL1', 'logm2', 'logr2', 'logL2', 'ecc', 'logp']
 
