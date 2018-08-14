@@ -1,6 +1,6 @@
 ## ellc.lc is in arbitrary flux units... am I using this correctly?
 
-
+from datetime import datetime
 import os
 import math
 import scipy.special as ss
@@ -426,12 +426,16 @@ class EclipsingBinary(object):
 		if (self.appMagMeanAll <= 11. or self.appMagMeanAll >= 24.):
 			self.appmag_failed = 1
 		
-		theta = np.arcsin((self.r1 + self.r2)/(2.*self.a))*180./np.pi
-		min_incl = 90. - theta 
-		max_incl = 90. + theta
-		if (self.inclination <= min_incl or self.inclination >= max_incl):
-			self.incl_failed = 1
-		
+		ratio = (self.r1 + self.r2)/(2.*self.a)
+		if (ratio <= 1):
+			theta = np.arcsin(ratio)*180./np.pi
+			min_incl = 90. - theta 
+			max_incl = 90. + theta
+			if (self.inclination <= min_incl or self.inclination >= max_incl):
+				self.incl_failed = 1
+		else:
+			self.radius_failed = 1
+
 		if (self.period >= self.totaltime):
 			self.period_failed = 1
 				
@@ -1636,7 +1640,12 @@ class LSSTEBworker(object):
 							 ], axis=1)
 		walkers.rename(columns = reNames, inplace=True)
 
-		print(f'running emcee with nwalkers={self.emcee_nwalkers}, nsamples={self.emcee_nsamples}, nthreads={self.emcee_nthreads}, ')
+		tot = self.emcee_nsamples*self.emcee_nwalkers - self.emcee_nburn
+		if (tot < self.n_bin):
+			print(f'WARNING: number of emcee samples={tot}, but number of requested binaries={self.n_bin}.  Increasing emcee sample')
+			self.emcee_nsamples = 1.5*int(np.ceil((self.n_bin + self.emcee_nburn)/self.emcee_nwalkers))
+			
+		print(f'{datetime.now()} running emcee with nwalkers={self.emcee_nwalkers}, nsamples={self.emcee_nsamples}, nthreads={self.emcee_nthreads}, ')
 		self.emcee_sampler = emcee.EnsembleSampler(self.emcee_nwalkers, len(outNames), lnprob, threads = self.emcee_nthreads)
 
 		#this will run it through emcee
@@ -1653,7 +1662,8 @@ class LSSTEBworker(object):
 
 
 	def sampleBreivikGal(self):
-		indices = np.random.randint(0, high=len(self.BreivikGal), size=self.n_bin)
+		ind = range(len(self.BreivikGal))
+		indices = umpy.random.choice(ind, size=self.n_bin, replace=False)
 		s = self.BreivikGal[indices].T
 		#outNames = ['Av', '[M/H]', 'logD', logm1', 'logr1', 'logL1', 'logm2', 'logr2', 'logL2', 'ecc', 'logp']
 
