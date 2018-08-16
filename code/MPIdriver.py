@@ -152,6 +152,7 @@ if __name__ == "__main__":
 	finishedIDs = getFinishedIDs()
 
 	ofile = worker.ofile
+	k=0
 	for i in range(len(fields[0])):
 		if (worker.OpSim.fieldID[i] not in finishedIDs):
 			#initialize
@@ -181,9 +182,9 @@ if __name__ == "__main__":
 					print(f"RANK={rank}, OpSimi={i}, linej={j}, pb={EB.period}")
 	
 					if (EB.observable):
-						worker.return_dict[j] = EB
-						worker.run_ellc_gatspy(j)
-						EB = worker.return_dict[j]
+						worker.return_dict[k] = EB
+						worker.run_ellc_gatspy(k)
+						EB = worker.return_dict[k]
 	
 					worker.writeOutputLine(EB)
 					csvfile.flush()
