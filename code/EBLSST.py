@@ -6,7 +6,7 @@ import math
 import scipy.special as ss
 import scipy.stats
 from scipy.interpolate import interp1d
-from scipy.integrate import quad, romberg
+from scipy.integrate import quad
 import multiprocessing 
 import logging
 import numpy as np
@@ -301,13 +301,13 @@ class EclipsingBinary(object):
 
 
 	def setLightCurve(self, filt, t_vis=30., X=1.):
-		def getSig2Rand(filt, magnitude):
+		def getSig2Rand(filt, magnitude, m_5 = None):
 			#returns 2 sigma random error based on the pass band (y-values may be wonky - need to check for seeing and 
 			# against others)
 			#X = 1. #function of distance??
 			#t_vis = 30. #seconds
-
-			m_5 = self.sigmaDict[filt]['C_m'] + (0.50*(self.sigmaDict[filt]['m_sky'] - 21.)) + (2.50*np.log10(0.7/self.sigmaDict[filt]['seeing'])) + (1.25*np.log10(t_vis/30.)) - (self.sigmaDict[filt]['k_m']*(X-1.))
+			if (m_5 == None):
+				m_5 = self.sigmaDict[filt]['C_m'] + (0.50*(self.sigmaDict[filt]['m_sky'] - 21.)) + (2.50*np.log10(0.7/self.sigmaDict[filt]['seeing'])) + (1.25*np.log10(t_vis/30.)) - (self.sigmaDict[filt]['k_m']*(X-1.))
 			return (0.04 - self.sigmaDict[filt]['gamma'])*(10**(0.4*(magnitude - m_5))) + self.sigmaDict[filt]['gamma']*((10**(0.4*(magnitude - m_5)))**2)*(magnitude**2)
 
 		# Function to get y-band LDCs for any Teff, logg, M_H
@@ -411,8 +411,11 @@ class EclipsingBinary(object):
 			# print( (self.appMagMean[filt] - 2.5*np.log10(lc)) - self.appMag[filt])
 			# raise
 
+			m_5 = None
+			if (self.useOpSimDates):
+				m_5 = self.OpSim.m_5[self.OpSimi][filt]
 			#Ivezic 2008, https://arxiv.org/pdf/0805.2366.pdf , Table 2
-			sigma2_rand = getSig2Rand(filt, self.appMag[filt])   #random photometric error
+			sigma2_rand = getSig2Rand(filt, self.appMag[filt], m_5 = m_5)   #random photometric error
 			self.appMagObsErr[filt] = ((self.sigma_sys**2.) + (sigma2_rand))**(1./2.)
 
 			#now add the uncertainty onto the magnitude
@@ -581,6 +584,7 @@ class OpSim(object):
 		self.RA = [None]
 		self.Dec = [None]
 		self.Nobs = [None]
+		self.m_5 = [None]
 		self.obsDates = [None]
 		self.NobsDates = [None]
 		self.totalNobs = [None]
@@ -593,7 +597,7 @@ class OpSim(object):
 		db = sqlite3.connect(self.dbFile)
 		cursor = db.cursor()
 
-		cursor.execute("SELECT fieldid, expDate, filter FROM summary") 
+		cursor.execute("SELECT fieldid, expDate, filter, fiveSigmaDepth FROM summary") 
 		self.summaryCursor = np.array(cursor.fetchall()) #NOTE: this takes a LONG time
 		print("have summary cursor.")
 
@@ -634,6 +638,7 @@ class OpSim(object):
 		FieldID = self.summaryCursor[:,0].astype('int')
 		date = self.summaryCursor[:,1].astype('float')
 		filt = self.summaryCursor[:,2]
+		fiveSigmaDepth = self.summaryCursor[:,3].astype('float')
 
 		posIDFilt = np.where(np.logical_and(FieldID == ID, filt == filtin[:-1]))
 		if (self.verbose):
@@ -646,15 +651,19 @@ class OpSim(object):
 		else:
 			if (self.verbose):
 				print('OpSimdates =', OpSimdates)
-			dates = np.array([float(d) for d in date[OpSimdates] ])/86400. #converting seconds to days
-			return dates
+			dates = np.array([float(d) for d in date[OpSimdates] ])/86400. #converting seconds to days\
+			#m_5 = np.array([float(d) for d in fiveSigmaDepth[OpSimdates] ])
+			m_5 = fiveSigmaDepth[OpSimdates]
+			print("m_5=",m_5)
+			return dates, m_5
 
 	def setDates(self, i, filters):
 		self.obsDates[i] = dict()
 		self.NobsDates[i] = dict()
+		self.m_5[i] = dict()
 		self.totalNobs[i] = 0
 		for filt in filters:
-			self.obsDates[i][filt] = self.getDates(self.fieldID[i], filt)
+			self.obsDates[i][filt], self.m_5[i][filt] = self.getDates(self.fieldID[i], filt)
 			self.NobsDates[i][filt] = 0
 			if (self.obsDates[i][filt][0] != None):
 				self.NobsDates[i][filt] = len(self.obsDates[i][filt])
@@ -682,6 +691,7 @@ class OpSim(object):
 		self.obsDates = np.full_like(self.RA, dict(), dtype=dict)
 		self.NobsDates = np.full_like(self.RA, dict(), dtype=dict)
 		self.totalNobs = np.full_like(self.RA, 0)
+		self.m_5 = np.full_like(self.RA, dict(), dtype=dict)
 
 		print(f'returned {len(self.fieldID)} fields')
 ###########################################################################################################
@@ -1287,7 +1297,7 @@ class LSSTEBworker(object):
 		self.verbose = False
 		self.useOpSimDates = True
 
-		self.useFast = True
+		self.useFast = False
 		self.doLSM = True
 		self.do_parallel = False 
 
