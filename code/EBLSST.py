@@ -302,12 +302,12 @@ class EclipsingBinary(object):
 
 
 	def setLightCurve(self, filt, t_vis=30., X=1.):
-		def getSig2Rand(filt, magnitude, m_5 = None):
+		def getSig2Rand(filt, magnitude, m_5 = [None]):
 			#returns 2 sigma random error based on the pass band (y-values may be wonky - need to check for seeing and 
 			# against others)
 			#X = 1. #function of distance??
 			#t_vis = 30. #seconds
-			if (m_5 == None):
+			if (m_5[0] == None):
 				m_5 = self.sigmaDict[filt]['C_m'] + (0.50*(self.sigmaDict[filt]['m_sky'] - 21.)) + (2.50*np.log10(0.7/self.sigmaDict[filt]['seeing'])) + (1.25*np.log10(t_vis/30.)) - (self.sigmaDict[filt]['k_m']*(X-1.))
 			return (0.04 - self.sigmaDict[filt]['gamma'])*(10**(0.4*(magnitude - m_5))) + self.sigmaDict[filt]['gamma']*((10**(0.4*(magnitude - m_5)))**2)*(magnitude**2)
 
