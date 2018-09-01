@@ -167,6 +167,7 @@ class EclipsingBinary(object):
 		self.Nfilters = 6.
 		self.nobs = 0
 		#this is for the magnitude uncertainties
+		#https://arxiv.org/pdf/0805.2366.pdf
 		self.sigmaDict = {
 			'u_': {
 				'gamma'	: 0.037,
@@ -652,9 +653,7 @@ class OpSim(object):
 			if (self.verbose):
 				print('OpSimdates =', OpSimdates)
 			dates = np.array([float(d) for d in date[OpSimdates] ])/86400. #converting seconds to days\
-			#m_5 = np.array([float(d) for d in fiveSigmaDepth[OpSimdates] ])
-			m_5 = fiveSigmaDepth[OpSimdates]
-			print("m_5=",m_5)
+			m_5 = np.array([float(x) for x in fiveSigmaDepth[OpSimdates] ])
 			return dates, m_5
 
 	def setDates(self, i, filters):
