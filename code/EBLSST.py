@@ -149,6 +149,7 @@ class EclipsingBinary(object):
 		self.shape_2 = 'sphere'
 		self.sigma_sys = 0.005  #systematic photometric error
 		self.obsDates = dict()
+		self.m_5 = dict()
 		self.appMag = dict()
 		self.appMagObs = dict()
 		self.appMagObsErr = dict()
@@ -412,9 +413,9 @@ class EclipsingBinary(object):
 			# print( (self.appMagMean[filt] - 2.5*np.log10(lc)) - self.appMag[filt])
 			# raise
 
-			m_5 = None
+			m_5 = [None]
 			if (self.useOpSimDates):
-				m_5 = self.OpSim.m_5[self.OpSimi][filt]
+				m_5 = self.m_5[filt]
 			#Ivezic 2008, https://arxiv.org/pdf/0805.2366.pdf , Table 2
 			sigma2_rand = getSig2Rand(filt, self.appMag[filt], m_5 = m_5)   #random photometric error
 			self.appMagObsErr[filt] = ((self.sigma_sys**2.) + (sigma2_rand))**(1./2.)
@@ -553,10 +554,11 @@ class EclipsingBinary(object):
 			if (self.OpSim != None):
 				if (filt in self.OpSim.obsDates[self.OpSimi]):
 					self.obsDates[filt] = self.OpSim.obsDates[self.OpSimi][filt]
+					self.m_5[filt] = self.OpSim.m_5[self.OpSimi][filt]
 
 			#otherwise get them
 			if (filt not in self.obsDates):
-				self.obsDates[filt] = self.OpSim.getDates(self.OpSim.fieldID[self.OpSimi], filt)
+				self.obsDates[filt], self.m_5[filt] = self.OpSim.getDates(self.OpSim.fieldID[self.OpSimi], filt)
 
 			if (self.verbose):
 				print(f'observing with OpSim in filter {filt}, have {len(self.obsDates[filt])} observations')
@@ -648,7 +650,7 @@ class OpSim(object):
 		OpSimdates = posIDFilt[0]
 
 		if (len(OpSimdates) < 1):
-			return [None]
+			return [None], [None]
 		else:
 			if (self.verbose):
 				print('OpSimdates =', OpSimdates)
