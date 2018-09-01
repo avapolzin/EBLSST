@@ -156,6 +156,7 @@ if __name__ == "__main__":
 	OpS.Dec = fields[2]
 	OpS.obsDates = np.full_like(OpS.RA, dict(), dtype=dict)
 	OpS.NobsDates = np.full_like(OpS.RA, dict(), dtype=dict)
+	OpS.m_5 = np.full_like(OpS.RA, dict(), dtype=dict)
 	OpS.totalNobs = np.full_like(OpS.RA, 0)
 	worker.OpSim = OpS
 	#worker.OpSim.verbose = True
