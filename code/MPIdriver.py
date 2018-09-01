@@ -73,13 +73,16 @@ if __name__ == "__main__":
 		args.n_bin = 4
 
 	nfields = 5292 #total number of fields from OpSim
+	finishedIDs = getFinishedIDs()
+	nfields -= len(finishedIDs)
 	nfieldsPerCore = int(np.floor(nfields/size))
+	print(f"nfields={nfields}, nfieldsPerCore={nfieldsPerCore}")
 
 	sendbuf = np.empty((size, 3*nfieldsPerCore), dtype='float64')
 	recvbuf = np.empty(3*nfieldsPerCore, dtype='float64')
 
 	galModelDir = 'TRILEGALmodels'
-	if (rank == 0):
+	if (rank == root):
 		if not os.path.exists(galModelDir):
 			os.makedirs(galModelDir)
 		if not os.path.exists('output_files'):
@@ -89,14 +92,30 @@ if __name__ == "__main__":
 		OpS.dbFile = '/projects/p30137/ageller/EBLSST/input/db/minion_1016_sqlite.db' #for the OpSim database	
 		OpS.getAllOpSimFields()
 
-		#scatter the fieldID, RA, Dec 
+		unfin = []
+		for i, ID in enumerate(OpS.fieldID):
+			if ID not in finishedIDs: 
+				unfin.append(i)
+		OpS.fieldID = OpS.fieldID[unfin]
+		OpS.RA = OpS.RA[unfin] 
+		OpS.Dec = OpS.Dec[unfin]
+
 		nfields = len(OpS.fieldID)
+		print(f"rank 0 nfields={nfields}")
+		print(unfin)
+		print(OpS.fieldID)
+		print(OpS.RA)
+		print(OpS.Dec)
+
+		#scatter the fieldID, RA, Dec 
 		#get as close as we can to having everything scattered
-		maxIndex = nfieldsPerCore*size
+		maxIndex = min(nfieldsPerCore*size, nfields-1)
 		output = np.vstack((OpS.fieldID[:maxIndex], OpS.RA[:maxIndex], OpS.Dec[:maxIndex])).T
 
 		print("reshaping to send to other processes")
 		sendbuf = np.reshape(output, (size, 3*nfieldsPerCore))
+
+
 
 
 	#scatter to the all of the processes
@@ -149,14 +168,13 @@ if __name__ == "__main__":
 	#add a delay here to help with the get_trilegal pileup?
 	time.sleep(5*rank)
 
-	finishedIDs = getFinishedIDs()
 
 	ofile = worker.ofile
-	k=0
+	k = 0
 	for i in range(len(fields[0])):
-		if (worker.OpSim.fieldID[i] not in finishedIDs):
+		if (worker.OpSim.fieldID[i] not in finishedIDs and worker.OpSim.fieldID[i] != -1):
 			#initialize
-			print(f"RANK={rank}, OpSimi={i}")
+			print(f"RANK={rank}, OpSimi={i}, ID={worker.OpSim.fieldID[i]}")
 			passed = worker.initialize(OpSimi=i) #Note: this will not redo the OpSim class, because we've set it above
 	
 			#set up the output file
@@ -170,16 +188,18 @@ if __name__ == "__main__":
 
 			if (passed):
 
-				print("worker.BreivikGal:",worker.BreivikGal)
 
 				#run through ellc and gatspy
 				gxDat = worker.sampleBreivikGal()
+
+				print(f'Nlines in gxDate={len(gxDat)} for ID={worker.OpSim.fieldID[i]}')
+
 				for j, line in enumerate(gxDat):
 					line = gxDat[j]
 	
 					#define the binary parameters
 					EB = worker.getEB(line, OpSimi=i)
-					print(f"RANK={rank}, OpSimi={i}, linej={j}, pb={EB.period}")
+					print(f"RANK={rank}, OpSimi={i}, linej={j}, ID={worker.OpSim.fieldID[i]}, pb={EB.period}")
 	
 					if (EB.observable):
 						worker.return_dict[k] = EB
