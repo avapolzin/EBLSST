@@ -216,10 +216,12 @@ if __name__ == "__main__":
 				if (n >= 3):
 					append = True
 
+
 			if (append):
 				print(f'appending to file {worker.ofile}, with n_bins = {n-3}')
 				csvfile = open(worker.ofile, 'a')	
 			else:
+				print(f'creating new file {worker.ofile}')
 				csvfile = open(worker.ofile, 'w')	
 
 			worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
