@@ -441,6 +441,11 @@ class EclipsingBinary(object):
 		else:
 			self.radius_failed = 1
 
+		if (self.useOpSimDates):
+			#redefine the totaltime based on the minimum OpSim date range over all filters
+			for filt in filters:
+				self.totaltime = min(self.totaltime.to(units.day).value, (max(self.obsDates[filt]) - min(self.obsDates[filt])))*units.day
+
 		if (self.period >= self.totaltime):
 			self.period_failed = 1
 				
@@ -559,6 +564,7 @@ class EclipsingBinary(object):
 			#otherwise get them
 			if (filt not in self.obsDates):
 				self.obsDates[filt], self.m_5[filt] = self.OpSim.getDates(self.OpSim.fieldID[self.OpSimi], filt)
+
 
 			if (self.verbose):
 				print(f'observing with OpSim in filter {filt}, have {len(self.obsDates[filt])} observations')
