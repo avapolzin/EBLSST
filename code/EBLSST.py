@@ -352,11 +352,18 @@ class EclipsingBinary(object):
 			self.initialize()
 
 		#limb darkenning
-		T1 = np.clip(self.T1, 3500., 50000.)
-		T2 = np.clip(self.T2, 3500., 50000.)
+		# T1 = np.clip(self.T1, 3500., 50000.)
+		# T2 = np.clip(self.T2, 3500., 50000.)
+		# g1 = np.clip(self.g1, 0., 5.)
+		# g2 = np.clip(self.g2, 0., 5.)
+		# MH = np.clip(self.M_H, -2.5, 0.5) 
+		#there is a complicated exclusion region in the limb darkening.  See testing/limbDarkening/checkClaret.ipynb .  
+		#I could possibly account for that, but for now I will simply not use limb darkening in those cases.
+		T1 = np.clip(self.T1, 3500., 40000.)
+		T2 = np.clip(self.T2, 3500., 40000.)
 		g1 = np.clip(self.g1, 0., 5.)
 		g2 = np.clip(self.g2, 0., 5.)
-		MH = np.clip(self.M_H, -2.5, 0.5) 
+		MH = np.clip(self.M_H, -5, 1.) 
 		# print(T1, T2, g1, g2, self.g1, self.g2, self.M_H)
 		if (filt == 'y_'):
 			a1_1, a2_1, a3_1, a4_1 = get_y_LDC(T1, g1, MH)
@@ -385,7 +392,7 @@ class EclipsingBinary(object):
 				radius_1=self.R_1, radius_2=self.R_2, incl=self.inclination, sbratio=self.sbratio, 
 				shape_1=self.shape_1, shape_2=self.shape_2, grid_1=self.grid_1,grid_2=self.grid_2) 
 		else:
-			print(f"WARNING: nan's in ldc filter={filt}, ldc_1={ldc_1}, T1={T1}, logg1={g1}, ldc_2={ldc_2}, T2={T2}, logg2={g2}, [M/H]={MH})")
+			print(f"WARNING: nan's in ldc filter={filt}, ldc_1={ldc_1}, T1={T1}, logg1={g1}, ldc_2={ldc_2}, T2={T2}, logg2={g2}, [M/H]={MH}")
 			lc = ellc.lc(self.obsDates[filt], 
 				t_zero=self.t_zero, period=self.period, a=self.a, q=self.q,
 				f_c=self.f_c, f_s=self.f_s, 
