@@ -51,12 +51,39 @@ def apply_args(worker, args):
 	if (args.seed is not None):
 		worker.seed = args.seed
 
-def getFinishedIDs(d='output_files'):
+def file_len(fname):
+	with open(fname) as f:
+		for i, l in enumerate(f):
+			pass
+	return i + 1
+
+
+def getFinishedIDs(d='output_files', Nbins = 40000):
 	#these are not all finished, but this is OK for now
 	if (not os.path.exists(d)):
 		return []
 	files = os.listdir(d)
-	IDs = [int(f[0:4]) for f in files]
+	IDs = []
+	for f in files:
+		n = file_len(f)
+		done = False
+		#if the file made it to the end (2 header rows, 1 line about OpSim)
+		if (n == Nbins + 3):
+			done = True
+		else:
+			#if there were no OpSim observations
+			if (n == 4):
+				last = ' '
+				with open(f, 'r') as fh:
+					for line in fh:
+						pass
+					last = line
+				if (last[0:2] == '-1'):
+					done = True
+
+		if done:
+			IDs.append(int(f[0:4]))
+
 	return IDs
 
 if __name__ == "__main__":
@@ -180,12 +207,27 @@ if __name__ == "__main__":
 	
 			#set up the output file
 			worker.ofile = 'output_files/'+str(int(worker.OpSim.fieldID[i])).zfill(4) + ofile
-			csvfile = open(worker.ofile, 'wt')	
+
+			#check if this is a new file or if we are appending
+			append = False
+			if os.path.exists(worker.ofile):
+				n = file_len(worker.ofile)
+				#in this scenario, the first few lines were written but it died somewhere. In this case, we don't write headers.  Otherwise, just start over
+				if (n >= 3):
+					append = True
+
+			if (append):
+				print(f'appending to file {worker.ofile}, with n_bins = {n-3}')
+				csvfile = open(worker.ofile, 'a')	
+			else:
+				csvfile = open(worker.ofile, 'w')	
+
 			worker.csvwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
 			#write header
-			worker.writeOutputLine(None, OpSimi=i, header=True)
-			csvfile.flush()
+			if (not append):
+				worker.writeOutputLine(None, OpSimi=i, header=True)
+				csvfile.flush()
 
 			if (passed):
 
