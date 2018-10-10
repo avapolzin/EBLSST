@@ -65,7 +65,7 @@ def getFinishedIDs(d='output_files', Nbins = 40000):
 	files = os.listdir(d)
 	IDs = []
 	for f in files:
-		n = file_len(f)
+		n = file_len(os.join(d,f))
 		done = False
 		#if the file made it to the end (2 header rows, 1 line about OpSim)
 		if (n == Nbins + 3):
@@ -74,7 +74,7 @@ def getFinishedIDs(d='output_files', Nbins = 40000):
 			#if there were no OpSim observations
 			if (n == 4):
 				last = ' '
-				with open(f, 'r') as fh:
+				with open(os.join(d,f), 'r') as fh:
 					for line in fh:
 						pass
 					last = line
