@@ -74,7 +74,7 @@ if __name__ == "__main__":
 	recN = []
 
 	#Read in all the data and make the histograms
-	d = "output_files/"
+	d = "../output_files/"
 	files = os.listdir(d)
 	IDs = []
 	for i, f in enumerate(files):
@@ -86,60 +86,61 @@ if __name__ == "__main__":
 		#read in rest of the file
 		data = pd.read_csv(d+f, header = 2)
 
-		#create histograms
-		#All
-		m1hAll0, m1b = np.histogram(data["m1"], bins=mbins, density=True)
-		qhAll0, qb = np.histogram(data["m2"]/data["m1"], bins=qbins, density=True)
-		ehAll0, eb = np.histogram(data["e"], bins=ebins, density=True)
-		lphAll0, lpb = np.histogram(np.log10(data["p"]), bins=lpbins, density=True)
-		dhAll0, db = np.histogram(data["d"], bins=dbins, density=True)
-		#Obs
-		obs = data.loc[data['LSM_PERIOD'] != -999]
-		m1hObs0, m1b = np.histogram(obs["m1"], bins=mbins, density=True)
-		qhObs0, qb = np.histogram(obs["m2"]/obs["m1"], bins=qbins, density=True)
-		ehObs0, eb = np.histogram(obs["e"], bins=ebins, density=True)
-		lphObs0, lpb = np.histogram(np.log10(obs["p"]), bins=lpbins, density=True)
-		dhObs0, db = np.histogram(obs["d"], bins=dbins, density=True)
-		#Rec
-		fullP = abs(data['LSM_PERIOD'] - data['p'])/data['LSM_PERIOD']
-		halfP = abs(0.5*data['LSM_PERIOD'] - data['p'])/(0.5*data['LSM_PERIOD'])
-		twiceP = abs(2.*data['LSM_PERIOD'] - data['p'])/(2.*data['LSM_PERIOD'])
-		rec = data.loc[(data['LSM_PERIOD'] != -999) & ( (fullP < Pcut) | (halfP < Pcut) | (twiceP < Pcut))]
-		m1hRec0, m1b = np.histogram(rec["m1"], bins=mbins, density=True)
-		qhRec0, qb = np.histogram(rec["m2"]/rec["m1"], bins=qbins, density=True)
-		ehRec0, eb = np.histogram(rec["e"], bins=ebins, density=True)
-		lphRec0, lpb = np.histogram(np.log10(rec["p"]), bins=lpbins, density=True)
-		dhRec0, db = np.histogram(rec["d"], bins=dbins, density=True)
+		if (len(data.index) > 10):
+			#create histograms
+			#All
+			m1hAll0, m1b = np.histogram(data["m1"], bins=mbins, density=True)
+			qhAll0, qb = np.histogram(data["m2"]/data["m1"], bins=qbins, density=True)
+			ehAll0, eb = np.histogram(data["e"], bins=ebins, density=True)
+			lphAll0, lpb = np.histogram(np.log10(data["p"]), bins=lpbins, density=True)
+			dhAll0, db = np.histogram(data["d"], bins=dbins, density=True)
+			#Obs
+			obs = data.loc[data['LSM_PERIOD'] != -999]
+			m1hObs0, m1b = np.histogram(obs["m1"], bins=mbins, density=True)
+			qhObs0, qb = np.histogram(obs["m2"]/obs["m1"], bins=qbins, density=True)
+			ehObs0, eb = np.histogram(obs["e"], bins=ebins, density=True)
+			lphObs0, lpb = np.histogram(np.log10(obs["p"]), bins=lpbins, density=True)
+			dhObs0, db = np.histogram(obs["d"], bins=dbins, density=True)
+			#Rec
+			fullP = abs(data['LSM_PERIOD'] - data['p'])/data['LSM_PERIOD']
+			halfP = abs(0.5*data['LSM_PERIOD'] - data['p'])/(0.5*data['LSM_PERIOD'])
+			twiceP = abs(2.*data['LSM_PERIOD'] - data['p'])/(2.*data['LSM_PERIOD'])
+			rec = data.loc[(data['LSM_PERIOD'] != -999) & ( (fullP < Pcut) | (halfP < Pcut) | (twiceP < Pcut))]
+			m1hRec0, m1b = np.histogram(rec["m1"], bins=mbins, density=True)
+			qhRec0, qb = np.histogram(rec["m2"]/rec["m1"], bins=qbins, density=True)
+			ehRec0, eb = np.histogram(rec["e"], bins=ebins, density=True)
+			lphRec0, lpb = np.histogram(np.log10(rec["p"]), bins=lpbins, density=True)
+			dhRec0, db = np.histogram(rec["d"], bins=dbins, density=True)
 
-		#for the mollweide
-		RA.append(header['OpSimRA'])
-		Dec.append(header['OpSimDec'])
-		recFrac.append(len(rec.index)/len(data.index))
-		recN.append(len(rec.index)/len(data.index)*header['NstarsTRILEGAL'][0])
+			#for the mollweide
+			RA.append(header['OpSimRA'])
+			Dec.append(header['OpSimDec'])
+			recFrac.append(len(rec.index)/len(data.index))
+			recN.append(len(rec.index)/len(data.index)*header['NstarsTRILEGAL'][0])
 
-######################
-#(NEED TO ACCOUNT FOR THE BINARY FRACTION)
-#####################
+	######################
+	#(NEED TO ACCOUNT FOR THE BINARY FRACTION)
+	#####################
 
-		#add the histograms 
-		#All
-		m1hAll += m1hAll0*header['NstarsTRILEGAL'][0]
-		qhAll += qhAll0*header['NstarsTRILEGAL'][0]
-		ehAll += ehAll0*header['NstarsTRILEGAL'][0]
-		lphAll += lphAll0*header['NstarsTRILEGAL'][0]
-		dhAll += dhAll0*header['NstarsTRILEGAL'][0]
-		#Obs
-		m1hObs += m1hObs0*header['NstarsTRILEGAL'][0]
-		qhObs += qhObs0*header['NstarsTRILEGAL'][0]
-		ehObs += ehObs0*header['NstarsTRILEGAL'][0]
-		lphObs += lphObs0*header['NstarsTRILEGAL'][0]
-		dhObs += dhObs0*header['NstarsTRILEGAL'][0]
-		#Rec
-		m1hRec += m1hRec0*header['NstarsTRILEGAL'][0]
-		qhRec += qhRec0*header['NstarsTRILEGAL'][0]
-		ehRec += ehRec0*header['NstarsTRILEGAL'][0]
-		lphRec += lphRec0*header['NstarsTRILEGAL'][0]
-		dhRec += dhRec0*header['NstarsTRILEGAL'][0]
+			#add the histograms 
+			#All
+			m1hAll += m1hAll0*header['NstarsTRILEGAL'][0]
+			qhAll += qhAll0*header['NstarsTRILEGAL'][0]
+			ehAll += ehAll0*header['NstarsTRILEGAL'][0]
+			lphAll += lphAll0*header['NstarsTRILEGAL'][0]
+			dhAll += dhAll0*header['NstarsTRILEGAL'][0]
+			#Obs
+			m1hObs += m1hObs0*header['NstarsTRILEGAL'][0]
+			qhObs += qhObs0*header['NstarsTRILEGAL'][0]
+			ehObs += ehObs0*header['NstarsTRILEGAL'][0]
+			lphObs += lphObs0*header['NstarsTRILEGAL'][0]
+			dhObs += dhObs0*header['NstarsTRILEGAL'][0]
+			#Rec
+			m1hRec += m1hRec0*header['NstarsTRILEGAL'][0]
+			qhRec += qhRec0*header['NstarsTRILEGAL'][0]
+			ehRec += ehRec0*header['NstarsTRILEGAL'][0]
+			lphRec += lphRec0*header['NstarsTRILEGAL'][0]
+			dhRec += dhRec0*header['NstarsTRILEGAL'][0]
 
 
 	#plot and save the histograms
