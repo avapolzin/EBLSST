@@ -1,3 +1,7 @@
+######################
+#NEED TO ACCOUNT FOR THE BINARY FRACTION when combining histograms
+#####################
+
 import pandas as pd
 import numpy as np
 import os
@@ -47,7 +51,7 @@ if __name__ == "__main__":
 	Pcut = 0.1
 
 	#minimum number of lines to consider in file
-	Nlim = 10
+	Nlim = 3
 
 	#bins for all the histograms
 	mbins = np.linspace(0,2, 100)
@@ -82,7 +86,7 @@ if __name__ == "__main__":
 	recN = []
 
 	#Read in all the data and make the histograms
-	d = "../output_files/"
+	d = "output_files/"
 	files = os.listdir(d)
 	IDs = []
 	for i, f in enumerate(files):
@@ -90,10 +94,16 @@ if __name__ == "__main__":
 
 		#read in the header
 		header = pd.read_csv(d+f, nrows=1)
+		#Nmult = header['NstarsTRILEGAL'][0]
+		Nmult = 1.
+
+		RA.append(header['OpSimRA'])
+		Dec.append(header['OpSimDec'])
 
 		#read in rest of the file
 		data = pd.read_csv(d+f, header = 2)
-
+		rF = 0.
+		rN = 0.
 		if (len(data.index) >= Nlim):
 			#create histograms
 			#All
@@ -102,54 +112,50 @@ if __name__ == "__main__":
 			ehAll0, eb = np.histogram(data["e"], bins=ebins, density=True)
 			lphAll0, lpb = np.histogram(np.log10(data["p"]), bins=lpbins, density=True)
 			dhAll0, db = np.histogram(data["d"], bins=dbins, density=True)
+			m1hAll += m1hAll0*Nmult
+			qhAll += qhAll0*Nmult
+			ehAll += ehAll0*Nmult
+			lphAll += lphAll0*Nmult
+			dhAll += dhAll0*Nmult
+
 			#Obs
 			obs = data.loc[data['LSM_PERIOD'] != -999]
-			m1hObs0, m1b = np.histogram(obs["m1"], bins=mbins, density=True)
-			qhObs0, qb = np.histogram(obs["m2"]/obs["m1"], bins=qbins, density=True)
-			ehObs0, eb = np.histogram(obs["e"], bins=ebins, density=True)
-			lphObs0, lpb = np.histogram(np.log10(obs["p"]), bins=lpbins, density=True)
-			dhObs0, db = np.histogram(obs["d"], bins=dbins, density=True)
-			#Rec
-			fullP = abs(data['LSM_PERIOD'] - data['p'])/data['LSM_PERIOD']
-			halfP = abs(0.5*data['LSM_PERIOD'] - data['p'])/(0.5*data['LSM_PERIOD'])
-			twiceP = abs(2.*data['LSM_PERIOD'] - data['p'])/(2.*data['LSM_PERIOD'])
-			rec = data.loc[(data['LSM_PERIOD'] != -999) & ( (fullP < Pcut) | (halfP < Pcut) | (twiceP < Pcut))]
-			m1hRec0, m1b = np.histogram(rec["m1"], bins=mbins, density=True)
-			qhRec0, qb = np.histogram(rec["m2"]/rec["m1"], bins=qbins, density=True)
-			ehRec0, eb = np.histogram(rec["e"], bins=ebins, density=True)
-			lphRec0, lpb = np.histogram(np.log10(rec["p"]), bins=lpbins, density=True)
-			dhRec0, db = np.histogram(rec["d"], bins=dbins, density=True)
+			if (len(obs.index) >= Nlim):
+				m1hObs0, m1b = np.histogram(obs["m1"], bins=mbins, density=True)
+				qhObs0, qb = np.histogram(obs["m2"]/obs["m1"], bins=qbins, density=True)
+				ehObs0, eb = np.histogram(obs["e"], bins=ebins, density=True)
+				lphObs0, lpb = np.histogram(np.log10(obs["p"]), bins=lpbins, density=True)
+				dhObs0, db = np.histogram(obs["d"], bins=dbins, density=True)
+				m1hObs += m1hObs0*Nmult
+				qhObs += qhObs0*Nmult
+				ehObs += ehObs0*Nmult
+				lphObs += lphObs0*Nmult
+				dhObs += dhObs0*Nmult
 
-			#for the mollweide
-			RA.append(header['OpSimRA'])
-			Dec.append(header['OpSimDec'])
-			recFrac.append(len(rec.index)/len(data.index))
-			recN.append(len(rec.index)/len(data.index)*header['NstarsTRILEGAL'][0])
+				#Rec
+				fullP = abs(data['LSM_PERIOD'] - data['p'])/data['LSM_PERIOD']
+				halfP = abs(0.5*data['LSM_PERIOD'] - data['p'])/(0.5*data['LSM_PERIOD'])
+				twiceP = abs(2.*data['LSM_PERIOD'] - data['p'])/(2.*data['LSM_PERIOD'])
+				rec = data.loc[(data['LSM_PERIOD'] != -999) & ( (fullP < Pcut) | (halfP < Pcut) | (twiceP < Pcut))]
+				if (len(rec.index) >= Nlim):
+					m1hRec0, m1b = np.histogram(rec["m1"], bins=mbins, density=True)
+					qhRec0, qb = np.histogram(rec["m2"]/rec["m1"], bins=qbins, density=True)
+					ehRec0, eb = np.histogram(rec["e"], bins=ebins, density=True)
+					lphRec0, lpb = np.histogram(np.log10(rec["p"]), bins=lpbins, density=True)
+					dhRec0, db = np.histogram(rec["d"], bins=dbins, density=True)
+					m1hRec += m1hRec0*Nmult
+					qhRec += qhRec0*Nmult
+					ehRec += ehRec0*Nmult
+					lphRec += lphRec0*Nmult
+					dhRec += dhRec0*Nmult
 
-	######################
-	#(NEED TO ACCOUNT FOR THE BINARY FRACTION)
-	#####################
+					#for the mollweide
+					rF = len(rec.index)/len(data.index)
+					rN = len(rec.index)/len(data.index)*Nmult
 
-			#add the histograms 
-			#All
-			m1hAll += m1hAll0*header['NstarsTRILEGAL'][0]
-			qhAll += qhAll0*header['NstarsTRILEGAL'][0]
-			ehAll += ehAll0*header['NstarsTRILEGAL'][0]
-			lphAll += lphAll0*header['NstarsTRILEGAL'][0]
-			dhAll += dhAll0*header['NstarsTRILEGAL'][0]
-			#Obs
-			m1hObs += m1hObs0*header['NstarsTRILEGAL'][0]
-			qhObs += qhObs0*header['NstarsTRILEGAL'][0]
-			ehObs += ehObs0*header['NstarsTRILEGAL'][0]
-			lphObs += lphObs0*header['NstarsTRILEGAL'][0]
-			dhObs += dhObs0*header['NstarsTRILEGAL'][0]
-			#Rec
-			m1hRec += m1hRec0*header['NstarsTRILEGAL'][0]
-			qhRec += qhRec0*header['NstarsTRILEGAL'][0]
-			ehRec += ehRec0*header['NstarsTRILEGAL'][0]
-			lphRec += lphRec0*header['NstarsTRILEGAL'][0]
-			dhRec += dhRec0*header['NstarsTRILEGAL'][0]
 
+		recFrac.append(rF)
+		recN.append(rN)
 
 	#plot and save the histograms
 	saveHist(np.append(m1hAll,0), np.append(m1hObs,0), np.append(m1hRec,0), m1b, 'm1 (Msolar)', 'EBLSST_m1hist.pdf')
@@ -163,21 +169,29 @@ if __name__ == "__main__":
 	coords = SkyCoord(RA, Dec, unit=(units.degree, units.degree),frame='icrs')	
 	lGal = coords.galactic.l.wrap_at(180.*units.degree).degree
 	bGal = coords.galactic.b.wrap_at(180.*units.degree).degree
+	RAwrap = coords.ra.wrap_at(180.*units.degree).degree
+	Decwrap = coords.dec.wrap_at(180.*units.degree).degree
 
 	f, ax = plt.subplots(subplot_kw={'projection': "mollweide"}, figsize=(8,5))
 	ax.grid(True)
-	ax.set_xlabel(r"$l$",fontsize=16)
-	ax.set_ylabel(r"$b$",fontsize=16)
-	mlw = ax.scatter(lGal.ravel()*np.pi/180., bGal.ravel()*np.pi/180., c=np.array(recFrac)*100., cmap='viridis_r', s = 4)
+	#ax.set_xlabel(r"$l$",fontsize=16)
+	#ax.set_ylabel(r"$b$",fontsize=16)
+	#mlw = ax.scatter(lGal.ravel()*np.pi/180., bGal.ravel()*np.pi/180., c=np.log10(np.array(recFrac)*100.), cmap='viridis_r', s = 4)
+	ax.set_xlabel("RA",fontsize=16)
+	ax.set_ylabel("Dec",fontsize=16)
+	mlw = ax.scatter(np.array(RAwrap).ravel()*np.pi/180., np.array(Decwrap).ravel()*np.pi/180., c=np.log10(np.array(recFrac)*100.), cmap='viridis_r', s = 4)
 	cbar = f.colorbar(mlw, shrink=0.7)
-	cbar.set_label(r'% recovered')
+	cbar.set_label(r'log10(% recovered)')
 	f.savefig('mollweide_pct.pdf',format='pdf', bbox_inches = 'tight')
 
 	f, ax = plt.subplots(subplot_kw={'projection': "mollweide"}, figsize=(8,5))
 	ax.grid(True)
-	ax.set_xlabel(r"$l$",fontsize=16)
-	ax.set_ylabel(r"$b$",fontsize=16)
-	mlw = ax.scatter(lGal.ravel()*np.pi/180., bGal.ravel()*np.pi/180., c=np.array(recN), cmap='viridis_r', s = 4)
+	#ax.set_xlabel(r"$l$",fontsize=16)
+	#ax.set_ylabel(r"$b$",fontsize=16)
+	#mlw = ax.scatter(lGal.ravel()*np.pi/180., bGal.ravel()*np.pi/180., c=np.log10(np.array(recN)), cmap='viridis_r', s = 4)
+	ax.set_xlabel("RA",fontsize=16)
+	ax.set_ylabel("Dec",fontsize=16)
+	mlw = ax.scatter(np.array(RAwrap).ravel()*np.pi/180., np.array(Decwrap).ravel()*np.pi/180., c=np.log10(np.array(recN)), cmap='viridis_r', s = 4)
 	cbar = f.colorbar(mlw, shrink=0.7)
-	cbar.set_label(r'N recovered')
+	cbar.set_label(r'log10(N) recovered')
 	f.savefig('mollweide_N.pdf',format='pdf', bbox_inches = 'tight')
