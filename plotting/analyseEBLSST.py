@@ -1,9 +1,14 @@
 import pandas as pd
 import numpy as np
 import os
-import matplotlib.pyplot as plt
 from astropy.coordinates import SkyCoord
 from astropy import units
+
+#for Quest
+import matplotlib
+matplotlib.use('Agg')
+
+from matplotlib import pyplot as plt
 
 def saveHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 	c1 = '#0294A5'  #turqoise
@@ -40,6 +45,9 @@ if __name__ == "__main__":
 
 	#cutoff in percent error for "recovered"
 	Pcut = 0.1
+
+	#minimum number of lines to consider in file
+	Nlim = 10
 
 	#bins for all the histograms
 	mbins = np.linspace(0,2, 100)
@@ -78,7 +86,7 @@ if __name__ == "__main__":
 	files = os.listdir(d)
 	IDs = []
 	for i, f in enumerate(files):
-		print(f)
+		print(round(i/len(files),4), f)
 
 		#read in the header
 		header = pd.read_csv(d+f, nrows=1)
@@ -86,7 +94,7 @@ if __name__ == "__main__":
 		#read in rest of the file
 		data = pd.read_csv(d+f, header = 2)
 
-		if (len(data.index) > 10):
+		if (len(data.index) >= Nlim):
 			#create histograms
 			#All
 			m1hAll0, m1b = np.histogram(data["m1"], bins=mbins, density=True)
@@ -160,7 +168,7 @@ if __name__ == "__main__":
 	ax.grid(True)
 	ax.set_xlabel(r"$l$",fontsize=16)
 	ax.set_ylabel(r"$b$",fontsize=16)
-	mlw = ax.scatter(lGal.ravel()*np.pi/180., bGal.ravel()*np.pi/180., c=np.array(recFrac)*100., cmap='viridis', s = 4)
+	mlw = ax.scatter(lGal.ravel()*np.pi/180., bGal.ravel()*np.pi/180., c=np.array(recFrac)*100., cmap='viridis_r', s = 4)
 	cbar = f.colorbar(mlw, shrink=0.7)
 	cbar.set_label(r'% recovered')
 	f.savefig('mollweide_pct.pdf',format='pdf', bbox_inches = 'tight')
@@ -169,7 +177,7 @@ if __name__ == "__main__":
 	ax.grid(True)
 	ax.set_xlabel(r"$l$",fontsize=16)
 	ax.set_ylabel(r"$b$",fontsize=16)
-	mlw = ax.scatter(lGal.ravel()*np.pi/180., bGal.ravel()*np.pi/180., c=np.array(recN), cmap='viridis', s = 4)
+	mlw = ax.scatter(lGal.ravel()*np.pi/180., bGal.ravel()*np.pi/180., c=np.array(recN), cmap='viridis_r', s = 4)
 	cbar = f.colorbar(mlw, shrink=0.7)
 	cbar.set_label(r'N recovered')
 	f.savefig('mollweide_N.pdf',format='pdf', bbox_inches = 'tight')
