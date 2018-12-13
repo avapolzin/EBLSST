@@ -1,6 +1,4 @@
-######################
-#NEED TO ACCOUNT FOR THE BINARY FRACTION when combining histograms
-#####################
+
 
 import pandas as pd
 import numpy as np
@@ -25,7 +23,7 @@ def saveHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 	ax1.step(bin_edges, histObs/np.sum(histObs), color=c2)
 	ax1.step(bin_edges, histRec/np.sum(histRec), color=c3)
 	ax1.set_ylabel('PDF')
-
+	ax1.set_yscale('log')
 	#CDF
 	cdfAll = []
 	cdfObs = []
@@ -86,7 +84,7 @@ if __name__ == "__main__":
 	recN = []
 
 	#Read in all the data and make the histograms
-	d = "output_files/"
+	d = "../output_files/"
 	files = os.listdir(d)
 	IDs = []
 	for i, f in enumerate(files):
@@ -94,8 +92,12 @@ if __name__ == "__main__":
 
 		#read in the header
 		header = pd.read_csv(d+f, nrows=1)
-		#Nmult = header['NstarsTRILEGAL'][0]
-		Nmult = 1.
+######################
+#NEED TO ACCOUNT FOR THE BINARY FRACTION when combining histograms
+#####################
+# Also, this weights those near the galactic plane sooo highly (and these are usually poorly recovered), that the resulting histograms are VERY noisy (since we're basically just looking at a few fields new to galactic plane)
+		Nmult = header['NstarsTRILEGAL'][0]
+		#Nmult = 1.
 
 		RA.append(header['OpSimRA'])
 		Dec.append(header['OpSimDec'])
@@ -121,16 +123,17 @@ if __name__ == "__main__":
 			#Obs
 			obs = data.loc[data['LSM_PERIOD'] != -999]
 			if (len(obs.index) >= Nlim):
+				ofrac = len(obs.index)/len(data.index)
 				m1hObs0, m1b = np.histogram(obs["m1"], bins=mbins, density=True)
 				qhObs0, qb = np.histogram(obs["m2"]/obs["m1"], bins=qbins, density=True)
 				ehObs0, eb = np.histogram(obs["e"], bins=ebins, density=True)
 				lphObs0, lpb = np.histogram(np.log10(obs["p"]), bins=lpbins, density=True)
 				dhObs0, db = np.histogram(obs["d"], bins=dbins, density=True)
-				m1hObs += m1hObs0*Nmult
-				qhObs += qhObs0*Nmult
-				ehObs += ehObs0*Nmult
-				lphObs += lphObs0*Nmult
-				dhObs += dhObs0*Nmult
+				m1hObs += m1hObs0*Nmult*ofrac
+				qhObs += qhObs0*Nmult*ofrac
+				ehObs += ehObs0*Nmult*ofrac
+				lphObs += lphObs0*Nmult*ofrac
+				dhObs += dhObs0*Nmult*ofrac
 
 				#Rec
 				fullP = abs(data['LSM_PERIOD'] - data['p'])/data['LSM_PERIOD']
@@ -138,16 +141,17 @@ if __name__ == "__main__":
 				twiceP = abs(2.*data['LSM_PERIOD'] - data['p'])/(2.*data['LSM_PERIOD'])
 				rec = data.loc[(data['LSM_PERIOD'] != -999) & ( (fullP < Pcut) | (halfP < Pcut) | (twiceP < Pcut))]
 				if (len(rec.index) >= Nlim):
+					rfrac = len(rec.index)/len(data.index)
 					m1hRec0, m1b = np.histogram(rec["m1"], bins=mbins, density=True)
 					qhRec0, qb = np.histogram(rec["m2"]/rec["m1"], bins=qbins, density=True)
 					ehRec0, eb = np.histogram(rec["e"], bins=ebins, density=True)
 					lphRec0, lpb = np.histogram(np.log10(rec["p"]), bins=lpbins, density=True)
 					dhRec0, db = np.histogram(rec["d"], bins=dbins, density=True)
-					m1hRec += m1hRec0*Nmult
-					qhRec += qhRec0*Nmult
-					ehRec += ehRec0*Nmult
-					lphRec += lphRec0*Nmult
-					dhRec += dhRec0*Nmult
+					m1hRec += m1hRec0*Nmult*rfrac
+					qhRec += qhRec0*Nmult*rfrac
+					ehRec += ehRec0*Nmult*rfrac
+					lphRec += lphRec0*Nmult*rfrac
+					dhRec += dhRec0*Nmult*rfrac
 
 					#for the mollweide
 					rF = len(rec.index)/len(data.index)
@@ -179,9 +183,9 @@ if __name__ == "__main__":
 	#mlw = ax.scatter(lGal.ravel()*np.pi/180., bGal.ravel()*np.pi/180., c=np.log10(np.array(recFrac)*100.), cmap='viridis_r', s = 4)
 	ax.set_xlabel("RA",fontsize=16)
 	ax.set_ylabel("Dec",fontsize=16)
-	mlw = ax.scatter(np.array(RAwrap).ravel()*np.pi/180., np.array(Decwrap).ravel()*np.pi/180., c=np.log10(np.array(recFrac)*100.), cmap='viridis_r', s = 4)
+	mlw = ax.scatter(np.array(RAwrap).ravel()*np.pi/180., np.array(Decwrap).ravel()*np.pi/180., c=np.array(recFrac)*100., cmap='viridis_r', s = 4)
 	cbar = f.colorbar(mlw, shrink=0.7)
-	cbar.set_label(r'log10(% recovered)')
+	cbar.set_label(r'% recovered')
 	f.savefig('mollweide_pct.pdf',format='pdf', bbox_inches = 'tight')
 
 	f, ax = plt.subplots(subplot_kw={'projection': "mollweide"}, figsize=(8,5))
