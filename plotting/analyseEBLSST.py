@@ -52,11 +52,12 @@ if __name__ == "__main__":
 	Nlim = 3
 
 	#bins for all the histograms
-	mbins = np.linspace(0,2, 100)
-	qbins = np.linspace(0,2, 100)
-	ebins = np.linspace(0,1, 100)
-	lpbins = np.linspace(-2, 6, 100)
-	dbins = np.linspace(0, 20, 100)
+	Nbins = 50
+	mbins = np.linspace(0,2, Nbins)
+	qbins = np.linspace(0,2, Nbins)
+	ebins = np.linspace(0,1, Nbins)
+	lpbins = np.linspace(-2, 6, Nbins)
+	dbins = np.linspace(0, 20, Nbins)
 
 	#blanks for the histograms
 	#All
