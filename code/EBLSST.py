@@ -605,6 +605,8 @@ class OpSim(object):
 		self.NobsDates = [None]
 		self.totalNobs = [None]
 
+		self.obsDist = None
+
 	#database manipulation
 	def getCursors(self):
 		#gets SQlite cursor to pull information from OpSim
@@ -677,7 +679,18 @@ class OpSim(object):
 		self.m_5[i] = dict()
 		self.totalNobs[i] = 0
 		for filt in filters:
-			self.obsDates[i][filt], self.m_5[i][filt] = self.getDates(self.fieldID[i], filt)
+			if (self.obsDist == None): #default, to use OpSim dates
+				self.obsDates[i][filt], self.m_5[i][filt] = self.getDates(self.fieldID[i], filt)
+			else: #alternatively, can use a CDF of dt values to construct dates
+				N = round(self.obsDist[filt]['Nobs'])
+				dt = []
+				for i in range(N):
+					y = np.random.random()
+					dt.append(10.**np.interp(y, self.obsDist[filt]['cdf'], self.obsDist[filt]['bins']))
+				self.obsDates[i][filt] = np.cumsum(np.array(dt))
+				self.m_5[i][filt] = 
+
+
 			self.NobsDates[i][filt] = 0
 			if (self.obsDates[i][filt][0] != None):
 				self.NobsDates[i][filt] = len(self.obsDates[i][filt])
@@ -1311,7 +1324,7 @@ class LSSTEBworker(object):
 		self.verbose = False
 		self.useOpSimDates = True
 
-		self.useFast = False
+		self.useFast = True
 		self.doLSM = True
 		self.do_parallel = False 
 

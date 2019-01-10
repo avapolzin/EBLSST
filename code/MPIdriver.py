@@ -185,8 +185,13 @@ if __name__ == "__main__":
 	OpS.NobsDates = np.full_like(OpS.RA, dict(), dtype=dict)
 	OpS.m_5 = np.full_like(OpS.RA, dict(), dtype=dict)
 	OpS.totalNobs = np.full_like(OpS.RA, 0)
+	#this will contain the distribution of dt times, which can be used instead of OpSim defaults
+	#OpS.obsDist = pickle.load(open("OpSim_primary_dtDist.pickle", 'rb'))
+
 	worker.OpSim = OpS
 	#worker.OpSim.verbose = True
+
+
 
 	galDir = os.path.join(galModelDir, str(rank))
 	if not os.path.exists(galDir):
