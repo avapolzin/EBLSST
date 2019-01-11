@@ -68,7 +68,7 @@ def getFinishedIDs(d='output_files', Nbins = 40000):
 		n = file_len(os.path.join(d,f))
 		done = False
 		#if the file made it to the end (2 header rows, 1 line about OpSim)
-		if (n == Nbins + 3):
+		if (n >= Nbins + 3):
 			done = True
 		else:
 			#if there were no OpSim observations
@@ -223,6 +223,7 @@ if __name__ == "__main__":
 
 
 			if (append):
+				worker.n_bin -= (n-3)
 				print(f'appending to file {worker.ofile}, with n_bins = {n-3}')
 				csvfile = open(worker.ofile, 'a')	
 			else:
