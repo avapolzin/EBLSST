@@ -8,6 +8,8 @@ from mpi4py import MPI
 import os
 import time
 
+import pickle
+
 
 
 def define_args():
