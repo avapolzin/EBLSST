@@ -673,15 +673,15 @@ class OpSim(object):
 				dates = np.array([float(d) for d in date[OpSimdates] ])/86400. #converting seconds to days\
 				m_5 = np.array([float(x) for x in fiveSigmaDepth[OpSimdates] ])
 			else: #alternatively, can use a CDF of dt values to construct dates
-				N = round(self.obsDist[filt]['Nobs'])
+				N = round(self.obsDist[filtin]['Nobs'])
 				dt = []
 				m5 = []
 				for i in range(N):
 					y = np.random.random()
-					dt.append(10.**np.interp(y, self.obsDist[filt]['cdf'], self.obsDist[filt]['bins']))
-				self.obsDates[i][filt] = np.cumsum(np.array(dt))
+					dt.append(10.**np.interp(y, self.obsDist[filtin]['cdf'], self.obsDist[filtin]['bins']))
+				dates = np.cumsum(np.array(dt))
 				mpos = np.random.randint(0, high=len(OpSimdates), size=N)
-				self.m_5[i][filt] = np.array([float(x) for x in fiveSigmaDepth[OpSimdates[mpos]] ])
+				m_5 = np.array([float(x) for x in fiveSigmaDepth[OpSimdates[mpos]] ])
 			return dates, m_5
 
 	def setDates(self, i, filters):
