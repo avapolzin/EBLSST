@@ -451,7 +451,10 @@ class EclipsingBinary(object):
 		if (self.useOpSimDates):
 			#redefine the totaltime based on the maximum OpSim date range over all filters
 			for filt in filters:
-				self.totaltime = max(self.totaltime.to(units.day).value, (max(self.obsDates[filt]) - min(self.obsDates[filt])))*units.day
+				#print("check filt, totaltime, obs", filt, self.totaltime, self.OpSim.obsDates[self.OpSimi])
+				#print("check obs", filt, self.OpSim.obsDates[self.OpSimi][filt])
+				if (self.OpSim.obsDates[self.OpSimi][filt][0] != None):
+					self.totaltime = max(self.totaltime, (max(self.OpSim.obsDates[self.OpSimi][filt]) - min(self.OpSim.obsDates[self.OpSimi][filt])))
 
 		if (self.period >= self.totaltime):
 			self.period_failed = 1
@@ -562,20 +565,24 @@ class EclipsingBinary(object):
 
 		#get the observation dates
 		if (self.useOpSimDates):
+			#print("using OpSimDates...")
 			#check if we already have the observing dates
 			if (self.OpSim != None):
+				#print("have OpSim", self.OpSim.obsDates)
 				if (filt in self.OpSim.obsDates[self.OpSimi]):
 					self.obsDates[filt] = self.OpSim.obsDates[self.OpSimi][filt]
 					self.m_5[filt] = self.OpSim.m_5[self.OpSimi][filt]
 
 			#otherwise get them
 			if (filt not in self.obsDates):
+				#print("getting dates")
 				self.obsDates[filt], self.m_5[filt] = self.OpSim.getDates(self.OpSim.fieldID[self.OpSimi], filt)
-
+				#print("received dates", filt, self.obsDates[filt])
 
 			if (self.verbose):
 				print(f'observing with OpSim in filter {filt}, have {len(self.obsDates[filt])} observations')
 		else:
+			#print("not using OpSimDates...")
 			nobs = int(round(self.totaltime / (self.cadence * self.Nfilters)))
 			self.obsDates[filt] = np.sort(self.totaltime * np.random.random(size=nobs))
 
@@ -682,6 +689,7 @@ class OpSim(object):
 				dates = np.cumsum(np.array(dt))
 				mpos = np.random.randint(0, high=len(OpSimdates), size=N)
 				m_5 = np.array([float(x) for x in fiveSigmaDepth[OpSimdates[mpos]] ])
+				#print("in getDate", dates, m_5)
 			return dates, m_5
 
 	def setDates(self, i, filters):
@@ -691,8 +699,7 @@ class OpSim(object):
 		self.totalNobs[i] = 0
 		for filt in filters:
 			self.obsDates[i][filt], self.m_5[i][filt] = self.getDates(self.fieldID[i], filt)
-
-
+			#print("in setDates", i, filt, self.obsDates[i][filt])
 
 			self.NobsDates[i][filt] = 0
 			if (self.obsDates[i][filt][0] != None):
@@ -1551,6 +1558,7 @@ class LSSTEBworker(object):
 		EB.Nfilters = len(self.filters)
 		EB.verbose = self.verbose
 		if (self.useOpSimDates):
+			#print("sending OpSim to EB", self.OpSim.obsDates)
 			EB.OpSim = self.OpSim
 		EB.initialize()
 
