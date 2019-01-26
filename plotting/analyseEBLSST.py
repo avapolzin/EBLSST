@@ -97,6 +97,8 @@ if __name__ == "__main__":
 	Dec = []
 	recFrac = []
 	recN = []
+	rawN = []
+	obsN = []
 
 	#Read in all the data and make the histograms
 	d = "../output_files/"
@@ -178,10 +180,14 @@ if __name__ == "__main__":
 					#for the mollweide
 					rF = len(rec.index)/len(data.index)
 					rN = len(rec.index)/len(data.index)*Nmult
+					raN = Nmult
+					obN = len(obs.index)/len(data.index)*Nmult
 
 
 		recFrac.append(rF)
 		recN.append(rN)
+		rawN.append(raN)
+		obsN.append(obN)
 
 	#plot and save the histograms
 	saveHist(np.append(m1hAll,0), np.append(m1hObs,0), np.append(m1hRec,0), m1b, 'm1 (Msolar)', 'EBLSST_m1hist.pdf')
@@ -223,4 +229,6 @@ if __name__ == "__main__":
 	f.savefig('mollweide_N.pdf',format='pdf', bbox_inches = 'tight')
 
 	print("###################")
+	print("total in sample (raw, log):",np.sum(rawN), np.log10(np.sum(rawN)))
+	print("total observable (raw, log):",np.sum(obsN), np.log10(np.sum(obsN)))
 	print("total recovered (raw, log):",np.sum(recN), np.log10(np.sum(recN)))
