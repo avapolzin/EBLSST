@@ -113,7 +113,7 @@ if __name__ == "__main__":
 			m1hAll0, m1b = np.histogram(data["m1"], bins=mbins, density=True)
 			qhAll0, qb = np.histogram(data["m2"]/data["m1"], bins=qbins, density=True)
 			ehAll0, eb = np.histogram(data["e"], bins=ebins, density=True)
-			lphAll0, lpb = np.histogram(np.ma.log10(data["p"].values).filled(0), bins=lpbins, density=True)
+			lphAll0, lpb = np.histogram(np.ma.log10(data["p"].values).filled(-999), bins=lpbins, density=True)
 			dhAll0, db = np.histogram(data["d"], bins=dbins, density=True)
 			m1hAll += m1hAll0*Nmult
 			qhAll += qhAll0*Nmult
@@ -128,7 +128,7 @@ if __name__ == "__main__":
 				m1hObs0, m1b = np.histogram(obs["m1"], bins=mbins, density=True)
 				qhObs0, qb = np.histogram(obs["m2"]/obs["m1"], bins=qbins, density=True)
 				ehObs0, eb = np.histogram(obs["e"], bins=ebins, density=True)
-				lphObs0, lpb = np.histogram(np.ma.log10(obs["p"].values).filled(0), bins=lpbins, density=True)
+				lphObs0, lpb = np.histogram(np.ma.log10(obs["p"].values).filled(-999), bins=lpbins, density=True)
 				dhObs0, db = np.histogram(obs["d"], bins=dbins, density=True)
 				m1hObs += m1hObs0*Nmult*ofrac
 				qhObs += qhObs0*Nmult*ofrac
@@ -146,7 +146,7 @@ if __name__ == "__main__":
 					m1hRec0, m1b = np.histogram(rec["m1"], bins=mbins, density=True)
 					qhRec0, qb = np.histogram(rec["m2"]/rec["m1"], bins=qbins, density=True)
 					ehRec0, eb = np.histogram(rec["e"], bins=ebins, density=True)
-					lphRec0, lpb = np.histogram(np.ma.log10(rec["p"].values).filled(0), bins=lpbins, density=True)
+					lphRec0, lpb = np.histogram(np.ma.log10(rec["p"].values).filled(-999), bins=lpbins, density=True)
 					dhRec0, db = np.histogram(rec["d"], bins=dbins, density=True)
 					m1hRec += m1hRec0*Nmult*rfrac
 					qhRec += qhRec0*Nmult*rfrac
