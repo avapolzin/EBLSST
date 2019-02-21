@@ -6,22 +6,11 @@ import os
 from astropy.coordinates import SkyCoord
 from astropy import units
 
-from astropy.modeling import models, fitting
-
 #for Quest
 import matplotlib
 matplotlib.use('Agg')
 
 from matplotlib import pyplot as plt
-
-def fitRagfb():
-	x = [0.05, 0.1, 1, 8, 15]  #estimates of midpoints in bins, and using this: https://sites.uni.edu/morgans/astro/course/Notes/section2/spectralmasses.html
-	y = [0.20, 0.35, 0.50, 0.70, 0.75]
-	init = models.PowerLaw1D(amplitude=0.5, x_0=1, alpha=-1.)
-	fitter = fitting.LevMarLSQFitter()
-	fit = fitter(init, x, y)
-
-	return fit
 
 def saveHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 	c1 = '#0294A5'  #turqoise
@@ -56,9 +45,6 @@ def saveHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 
 if __name__ == "__main__":
 
-	#get the Raghavan binary fraction fit
-	fbFit= fitRagfb()
-
 	#cutoff in percent error for "recovered"
 	Pcut = 0.1
 
@@ -67,7 +53,7 @@ if __name__ == "__main__":
 
 	#bins for all the histograms
 	Nbins = 50
-	mbins = np.linspace(0,5, Nbins)
+	mbins = np.linspace(0,2, Nbins)
 	qbins = np.linspace(0,2, Nbins)
 	ebins = np.linspace(0,1, Nbins)
 	lpbins = np.linspace(-2, 6, Nbins)
@@ -97,8 +83,6 @@ if __name__ == "__main__":
 	Dec = []
 	recFrac = []
 	recN = []
-	rawN = []
-	obsN = []
 
 	#Read in all the data and make the histograms
 	d = "../output_files/"
@@ -112,7 +96,7 @@ if __name__ == "__main__":
 ######################
 #NEED TO ACCOUNT FOR THE BINARY FRACTION when combining histograms
 #####################
-# Also, this weights those near the galactic plane sooo highly (and these are usually poorly recovered), that the resulting histograms are VERY noisy (since we're basically just looking at a few fields near to galactic plane)
+# Also, this weights those near the galactic plane sooo highly (and these are usually poorly recovered), that the resulting histograms are VERY noisy (since we're basically just looking at a few fields new to galactic plane)
 		Nmult = header['NstarsTRILEGAL'][0]
 		#Nmult = 1.
 
@@ -120,7 +104,7 @@ if __name__ == "__main__":
 		Dec.append(header['OpSimDec'])
 
 		#read in rest of the file
-		data = pd.read_csv(d+f, header = 2)
+		data = pd.read_csv(d+f, header = 2).dropna()
 		rF = 0.
 		rN = 0.
 		if (len(data.index) >= Nlim):
@@ -129,15 +113,8 @@ if __name__ == "__main__":
 			m1hAll0, m1b = np.histogram(data["m1"], bins=mbins, density=True)
 			qhAll0, qb = np.histogram(data["m2"]/data["m1"], bins=qbins, density=True)
 			ehAll0, eb = np.histogram(data["e"], bins=ebins, density=True)
-			lphAll0, lpb = np.histogram(np.log10(data["p"]), bins=lpbins, density=True)
+			lphAll0, lpb = np.histogram(np.ma.log10(data["p"].values).filled(0), bins=lpbins, density=True)
 			dhAll0, db = np.histogram(data["d"], bins=dbins, density=True)
-
-			#account for the binary fraction, as a function of mass
-			dm1 = np.diff(m1b)
-			m1val = m1b[:-1] + dm1/2.
-			fb = np.sum(m1hAll0*dm1*fbFit(m1val))
-			Nmult *= fb
-			
 			m1hAll += m1hAll0*Nmult
 			qhAll += qhAll0*Nmult
 			ehAll += ehAll0*Nmult
@@ -151,7 +128,7 @@ if __name__ == "__main__":
 				m1hObs0, m1b = np.histogram(obs["m1"], bins=mbins, density=True)
 				qhObs0, qb = np.histogram(obs["m2"]/obs["m1"], bins=qbins, density=True)
 				ehObs0, eb = np.histogram(obs["e"], bins=ebins, density=True)
-				lphObs0, lpb = np.histogram(np.log10(obs["p"]), bins=lpbins, density=True)
+				lphObs0, lpb = np.histogram(np.ma.log10(obs["p"].values).filled(0), bins=lpbins, density=True)
 				dhObs0, db = np.histogram(obs["d"], bins=dbins, density=True)
 				m1hObs += m1hObs0*Nmult*ofrac
 				qhObs += qhObs0*Nmult*ofrac
@@ -169,7 +146,7 @@ if __name__ == "__main__":
 					m1hRec0, m1b = np.histogram(rec["m1"], bins=mbins, density=True)
 					qhRec0, qb = np.histogram(rec["m2"]/rec["m1"], bins=qbins, density=True)
 					ehRec0, eb = np.histogram(rec["e"], bins=ebins, density=True)
-					lphRec0, lpb = np.histogram(np.log10(rec["p"]), bins=lpbins, density=True)
+					lphRec0, lpb = np.histogram(np.ma.log10(rec["p"].values).filled(0), bins=lpbins, density=True)
 					dhRec0, db = np.histogram(rec["d"], bins=dbins, density=True)
 					m1hRec += m1hRec0*Nmult*rfrac
 					qhRec += qhRec0*Nmult*rfrac
@@ -180,14 +157,10 @@ if __name__ == "__main__":
 					#for the mollweide
 					rF = len(rec.index)/len(data.index)
 					rN = len(rec.index)/len(data.index)*Nmult
-					raN = Nmult
-					obN = len(obs.index)/len(data.index)*Nmult
 
 
 		recFrac.append(rF)
 		recN.append(rN)
-		rawN.append(raN)
-		obsN.append(obN)
 
 	#plot and save the histograms
 	saveHist(np.append(m1hAll,0), np.append(m1hObs,0), np.append(m1hRec,0), m1b, 'm1 (Msolar)', 'EBLSST_m1hist.pdf')
@@ -227,8 +200,3 @@ if __name__ == "__main__":
 	cbar = f.colorbar(mlw, shrink=0.7)
 	cbar.set_label(r'log10(N) recovered')
 	f.savefig('mollweide_N.pdf',format='pdf', bbox_inches = 'tight')
-
-	print("###################")
-	print("total in sample (raw, log):",np.sum(rawN), np.log10(np.sum(rawN)))
-	print("total observable (raw, log):",np.sum(obsN), np.log10(np.sum(obsN)))
-	print("total recovered (raw, log):",np.sum(recN), np.log10(np.sum(recN)))
