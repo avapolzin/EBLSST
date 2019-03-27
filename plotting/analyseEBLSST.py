@@ -5,12 +5,22 @@ import numpy as np
 import os
 from astropy.coordinates import SkyCoord
 from astropy import units
+from astropy.modeling import models, fitting
 
 #for Quest
 import matplotlib
 matplotlib.use('Agg')
 
 from matplotlib import pyplot as plt
+
+def fitRagfb():
+	x = [0.05, 0.1, 1, 8, 15]  #estimates of midpoints in bins, and using this: https://sites.uni.edu/morgans/astro/course/Notes/section2/spectralmasses.html
+	y = [0.20, 0.35, 0.50, 0.70, 0.75]
+	init = models.PowerLaw1D(amplitude=0.5, x_0=1, alpha=-1.)
+	fitter = fitting.LevMarLSQFitter()
+	fit = fitter(init, x, y)
+
+	return fit
 
 def saveHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 	c1 = '#0294A5'  #turqoise
@@ -45,6 +55,10 @@ def saveHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 
 if __name__ == "__main__":
 
+	#get the Raghavan binary fraction fit
+	fbFit= fitRagfb()
+	print(fbFit)
+		
 	#cutoff in percent error for "recovered"
 	Pcut = 0.1
 
@@ -53,7 +67,7 @@ if __name__ == "__main__":
 
 	#bins for all the histograms
 	Nbins = 50
-	mbins = np.linspace(0,2, Nbins)
+	mbins = np.linspace(0,5, Nbins)
 	qbins = np.linspace(0,2, Nbins)
 	ebins = np.linspace(0,1, Nbins)
 	lpbins = np.linspace(-2, 6, Nbins)
@@ -83,6 +97,12 @@ if __name__ == "__main__":
 	Dec = []
 	recFrac = []
 	recN = []
+
+	rawN = []
+	obsN = []
+	fileN = []
+	fileObsN = []
+	fileRecN = []
 
 	#Read in all the data and make the histograms
 	d = "../output_files/"
@@ -115,6 +135,14 @@ if __name__ == "__main__":
 			ehAll0, eb = np.histogram(data["e"], bins=ebins, density=True)
 			lphAll0, lpb = np.histogram(np.ma.log10(data["p"].values).filled(-999), bins=lpbins, density=True)
 			dhAll0, db = np.histogram(data["d"], bins=dbins, density=True)
+
+			#account for the binary fraction, as a function of mass
+			dm1 = np.diff(m1b)
+			m1val = m1b[:-1] + dm1/2.
+			fb = np.sum(m1hAll0*dm1*fbFit(m1val))
+			Nmult *= fb
+
+						
 			m1hAll += m1hAll0*Nmult
 			qhAll += qhAll0*Nmult
 			ehAll += ehAll0*Nmult
@@ -157,10 +185,19 @@ if __name__ == "__main__":
 					#for the mollweide
 					rF = len(rec.index)/len(data.index)
 					rN = len(rec.index)/len(data.index)*Nmult
-
+					raN = Nmult
+					obN = len(obs.index)/len(data.index)*Nmult
+					fiN = len(data.index)
+					fioN = len(obs.index)
+					firN = len(rec.index)
 
 		recFrac.append(rF)
 		recN.append(rN)
+		rawN.append(raN)
+		obsN.append(obN)
+		fileN.append(fiN)
+		fileObsN.append(fioN)
+		fileRecN.append(firN)
 
 	#plot and save the histograms
 	saveHist(np.append(m1hAll,0), np.append(m1hObs,0), np.append(m1hRec,0), m1b, 'm1 (Msolar)', 'EBLSST_m1hist.pdf')
@@ -200,3 +237,12 @@ if __name__ == "__main__":
 	cbar = f.colorbar(mlw, shrink=0.7)
 	cbar.set_label(r'log10(N) recovered')
 	f.savefig('mollweide_N.pdf',format='pdf', bbox_inches = 'tight')
+
+	print("###################")
+	print("number of binaries in input files (raw, log):",np.sum(fileN), np.log10(np.sum(fileN)))
+	print("number of binaries in tested with gatspy (raw, log):",np.sum(fileObsN), np.log10(np.sum(fileObsN)))
+	print("number of binaries in recovered with gatspy (raw, log):",np.sum(fileRecN), np.log10(np.sum(fileRecN)))
+	print("###################")
+	print("total in sample (raw, log):",np.sum(rawN), np.log10(np.sum(rawN)))
+	print("total observable (raw, log):",np.sum(obsN), np.log10(np.sum(obsN)))
+	print("total recovered (raw, log):",np.sum(recN), np.log10(np.sum(recN)))
