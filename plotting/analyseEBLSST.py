@@ -70,7 +70,7 @@ def saveHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 
 
 	#write to a text file
-	with open(fname+'.txt','w') as f: d
+	with open(fname+'.txt','w') as f:
 		f.write('binEdges,histAll,histObs,histRec\n')
 		for (b,a,o,r) in zip(bin_edges, histAll, histObs, histRec):
 			f.write(str(b)+','+str(a)+','+str(o)+','+str(r)+'\n')
