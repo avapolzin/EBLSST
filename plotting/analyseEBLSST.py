@@ -53,9 +53,26 @@ def saveHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 	f.subplots_adjust(hspace=0)
 	f.savefig(fname+'.pdf',format='pdf', bbox_inches = 'tight')
 
+	#plot the ratios
+	f,ax1 = plt.subplots(figsize=(5, 4))
+
+	#PDF
+	use = np.where(histAll > 0)[0]
+	ax1.step(bin_edges[use], histObs[use]/histAll[use], color=c2)
+	ax1.step(bin_edges[use], histRec[use]/histAll[use], color=c3)
+	use = np.where(histObs > 0)[0]
+	ax1.step(bin_edges[use], histRec[use]/histObs[use], color=c3, linestyle='--')
+
+	ax1.set_ylabel('Ratio')
+	ax1.set_yscale('log')
+	ax1.set_ylim(10**-4,1)
+	ax1.set_xlabel(xtitle)
+	f.savefig(fname+'_ratio.pdf',format='pdf', bbox_inches = 'tight')
+
+
 	#write to a text file
-	with open(fname+'.txt','w') as f:
-		f.write('binEdges, histAll, histObs, histRec\n')
+	with open(fname+'.txt','w') as f: d
+		f.write('binEdges,histAll,histObs,histRec\n')
 		for (b,a,o,r) in zip(bin_edges, histAll, histObs, histRec):
 			f.write(str(b)+','+str(a)+','+str(o)+','+str(r)+'\n')
 
