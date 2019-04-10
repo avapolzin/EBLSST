@@ -54,11 +54,11 @@ def saveHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 	f.savefig(fname+'.pdf',format='pdf', bbox_inches = 'tight')
 
 	#write to a text file
-	with open(fname+'txt','w') as f:
-		f.write('binEdges, histAll, histObs, histRec')
+	with open(fname+'.txt','w') as f:
+		f.write('binEdges, histAll, histObs, histRec\n')
 		for (b,a,o,r) in zip(bin_edges, histAll, histObs, histRec):
-			f.write(str(b)+','+str(a)+','+str(o)+','+str(r))
-			
+			f.write(str(b)+','+str(a)+','+str(o)+','+str(r)+'\n')
+
 if __name__ == "__main__":
 
 	#get the Raghavan binary fraction fit
