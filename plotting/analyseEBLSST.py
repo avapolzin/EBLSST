@@ -56,7 +56,6 @@ def saveHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 	#plot the ratios
 	f,ax1 = plt.subplots(figsize=(5, 4))
 
-	#PDF
 	use = np.where(histAll > 0)[0]
 	ax1.step(bin_edges[use], histObs[use]/histAll[use], color=c2)
 	ax1.step(bin_edges[use], histRec[use]/histAll[use], color=c3)
