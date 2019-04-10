@@ -51,8 +51,14 @@ def saveHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 
 	ax2.set_xlabel(xtitle)
 	f.subplots_adjust(hspace=0)
-	f.savefig(fname,format='pdf', bbox_inches = 'tight')
+	f.savefig(fname+'.pdf',format='pdf', bbox_inches = 'tight')
 
+	#write to a text file
+	with open(fname+'txt','w') as f:
+		f.write('binEdges, histAll, histObs, histRec')
+		for (b,a,o,r) in zip(bin_edges, histAll, histObs, histRec):
+			f.write(str(b)+','+str(a)+','+str(o)+','+str(r))
+			
 if __name__ == "__main__":
 
 	#get the Raghavan binary fraction fit
@@ -200,11 +206,11 @@ if __name__ == "__main__":
 		fileRecN.append(firN)
 
 	#plot and save the histograms
-	saveHist(np.append(m1hAll,0), np.append(m1hObs,0), np.append(m1hRec,0), m1b, 'm1 (Msolar)', 'EBLSST_m1hist.pdf')
-	saveHist(np.append(qhAll,0), np.append(qhObs,0), np.append(qhRec,0), qb, 'q (m2/m1)', 'EBLSST_qhist.pdf')
-	saveHist(np.append(ehAll,0), np.append(ehObs,0), np.append(ehRec,0), eb, 'e', 'EBLSST_ehist.pdf')
-	saveHist(np.append(lphAll,0), np.append(lphObs,0), np.append(lphRec,0), lpb, 'log(P [days])', 'EBLSST_lphist.pdf')
-	saveHist(np.append(dhAll,0), np.append(dhObs,0), np.append(dhRec,0), db, 'd (kpc)', 'EBLSST_dhist.pdf')
+	saveHist(np.append(m1hAll,0), np.append(m1hObs,0), np.append(m1hRec,0), m1b, 'm1 (Msolar)', 'EBLSST_m1hist')
+	saveHist(np.append(qhAll,0), np.append(qhObs,0), np.append(qhRec,0), qb, 'q (m2/m1)', 'EBLSST_qhist')
+	saveHist(np.append(ehAll,0), np.append(ehObs,0), np.append(ehRec,0), eb, 'e', 'EBLSST_ehist')
+	saveHist(np.append(lphAll,0), np.append(lphObs,0), np.append(lphRec,0), lpb, 'log(P [days])', 'EBLSST_lphist')
+	saveHist(np.append(dhAll,0), np.append(dhObs,0), np.append(dhRec,0), db, 'd (kpc)', 'EBLSST_dhist')
 
 
 	#make the mollweide
