@@ -73,13 +73,13 @@ if __name__ == "__main__":
 
 	#bins for all the histograms
 	Nbins = 25
-	mbins = np.arange(0,10, 0.1)
-	qbins = np.arange(0,10, 0.2)
-	ebins = np.arange(0, 1.05, 0.05)
-	lpbins = np.arange(-2, 10, 0.5)
-	dbins = np.arange(0, 40, 1)
-	magbins = np.arange(11, 25, 1)
-	rbins = np.arange(0, 100, 0.5)
+	mbins = np.arange(0,10, 0.1, dtype='float')
+	qbins = np.arange(0,10, 0.2, dtype='float')
+	ebins = np.arange(0, 1.05, 0.05, dtype='float')
+	lpbins = np.arange(-2, 10, 0.5, dtype='float')
+	dbins = np.arange(0, 40, 1, dtype='float')
+	magbins = np.arange(11, 25, 1, dtype='float')
+	rbins = np.arange(0, 100, 0.5, dtype='float')
 
 	#blanks for the histograms
 	#All
@@ -231,8 +231,8 @@ if __name__ == "__main__":
 	saveHist(np.insert(ehAll,0,0), np.insert(ehObs,0,0), np.insert(ehRec,0,0), eb, 'e', 'EBLSST_ehist')
 	saveHist(np.insert(lphAll,0,0), np.insert(lphObs,0,0), np.insert(lphRec,0,0), lpb, 'log(P [days])', 'EBLSST_lphist')
 	saveHist(np.insert(dhAll,0,0), np.insert(dhObs,0,0), np.insert(dhRec,0,0), db, 'd (kpc)', 'EBLSST_dhist')
-	saveHist(np.insert(maghAll,0,0), np.insert(maghObs,0,0), np.insert(maghRec,0,0), db, 'mag', 'EBLSST_maghist')
-	saveHist(np.insert(rhAll,0,0), np.insert(rhObs,0,0), np.insert(rhRec,0,0), qb, 'r2/r1', 'EBLSST_rhist')
+	saveHist(np.insert(maghAll,0,0), np.insert(maghObs,0,0), np.insert(maghRec,0,0), magb, 'mag', 'EBLSST_maghist')
+	saveHist(np.insert(rhAll,0,0), np.insert(rhObs,0,0), np.insert(rhRec,0,0), rb, 'r2/r1', 'EBLSST_rhist')
 
 
 	#make the mollweide
