@@ -206,11 +206,11 @@ if __name__ == "__main__":
 		fileRecN.append(firN)
 
 	#plot and save the histograms
-	saveHist(np.append(m1hAll,0), np.append(m1hObs,0), np.append(m1hRec,0), m1b, 'm1 (Msolar)', 'EBLSST_m1hist')
-	saveHist(np.append(qhAll,0), np.append(qhObs,0), np.append(qhRec,0), qb, 'q (m2/m1)', 'EBLSST_qhist')
-	saveHist(np.append(ehAll,0), np.append(ehObs,0), np.append(ehRec,0), eb, 'e', 'EBLSST_ehist')
-	saveHist(np.append(lphAll,0), np.append(lphObs,0), np.append(lphRec,0), lpb, 'log(P [days])', 'EBLSST_lphist')
-	saveHist(np.append(dhAll,0), np.append(dhObs,0), np.append(dhRec,0), db, 'd (kpc)', 'EBLSST_dhist')
+	saveHist(np.insert(m1hAll,0,0), np.insert(m1hObs,0,0), np.insert(m1hRec,0,0), m1b, 'm1 (Msolar)', 'EBLSST_m1hist')
+	saveHist(np.insert(qhAll,0,0), np.insert(qhObs,0,0), np.insert(qhRec,0,0), qb, 'q (m2/m1)', 'EBLSST_qhist')
+	saveHist(np.insert(ehAll,0,0), np.insert(ehObs,0,0), np.insert(ehRec,0,0), eb, 'e', 'EBLSST_ehist')
+	saveHist(np.insert(lphAll,0,0), np.insert(lphObs,0,0), np.insert(lphRec,0,0), lpb, 'log(P [days])', 'EBLSST_lphist')
+	saveHist(np.insert(dhAll,0,0), np.insert(dhObs,0,0), np.insert(dhRec,0,0), db, 'd (kpc)', 'EBLSST_dhist')
 
 
 	#make the mollweide
