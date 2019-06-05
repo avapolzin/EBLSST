@@ -77,7 +77,7 @@ if __name__ == "__main__":
 	qbins = np.arange(0,10, 0.2)
 	ebins = np.arange(0, 1, 0.05)
 	lpbins = np.arange(0,10, 0.25)
-	dbins = np.linspace(0, 40, 0.5)
+	dbins = np.arange(0, 40, 0.5)
 
 	#blanks for the histograms
 	#All
