@@ -73,11 +73,11 @@ if __name__ == "__main__":
 
 	#bins for all the histograms
 	Nbins = 25
-	mbins = np.arange(0,max(data["m1"]), 0.2)
-	qbins = np.arange(0,max(data["m2"]/data["m1"]), 0.2)
+	mbins = np.arange(0,10, 0.2)
+	qbins = np.arange(0,10, 0.2)
 	ebins = np.arange(0, 1, 0.05)
-	ebins = np.arange(0,max(np.ma.log10(data["p"].values)), 0.25)
-	dbins = np.linspace(0, max(data["d"]), 0.5)
+	lpbins = np.arange(0,10, 0.25)
+	dbins = np.linspace(0, 40, 0.5)
 
 	#blanks for the histograms
 	#All
