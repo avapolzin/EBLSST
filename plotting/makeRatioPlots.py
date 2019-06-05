@@ -17,13 +17,6 @@ def plotHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 
 	binHalf = (bin_edges[1] - bin_edges[0])/2.
 
-	#PDF
-	ax1.step(bin_edges, histAll/np.sum(histAll), color=c1, label='All')
-	ax1.step(bin_edges, histObs/np.sum(histObs), color=c2, label='Observable')
-	ax1.step(bin_edges, histRec/np.sum(histRec), color=c3, label='Recoverable')
-	ax1.set_ylabel('PDF')
-	ax1.set_yscale('log')
-
 	#CDF
 	cdfAll = []
 	cdfObs = []
@@ -34,10 +27,17 @@ def plotHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 		cdfObs.append(np.sum(histObs[:i])/np.sum(histObs))
 	for i in range(len(histRec)):
 		cdfRec.append(np.sum(histRec[:i])/np.sum(histRec))
-	ax2.step(bin_edges, cdfAll, color=c1, label='All')
-	ax2.step(bin_edges, cdfObs, color=c2, label='Observable')
-	ax2.step(bin_edges, cdfRec, color=c3, label='Recoverable')
-	ax2.set_ylabel('CDF')
+	ax1.step(bin_edges, cdfAll, color=c1, label='All')
+	ax1.step(bin_edges, cdfObs, color=c2, label='Observable')
+	ax1.step(bin_edges, cdfRec, color=c3, label='Recoverable')
+	ax1.set_ylabel('CDF')
+
+	#PDF
+	ax2.step(bin_edges, histAll/np.sum(histAll), color=c1, label='All')
+	ax2.step(bin_edges, histObs/np.sum(histObs), color=c2, label='Observable')
+	ax2.step(bin_edges, histRec/np.sum(histRec), color=c3, label='Recoverable')
+	ax2.set_ylabel('PDF')
+	ax2.set_yscale('log')
 
 	#ratio
 	use = np.where(histAll > 0)[0]
@@ -66,7 +66,7 @@ def plotHist(histAll, histObs, histRec, bin_edges, xtitle, fname):
 	lObsAll = mlines.Line2D([], [], color=c2, marker='o', markerfacecolor=c1, markersize=5, markeredgecolor=c2, label='Obs./All')
 	lRecAll = mlines.Line2D([], [], color=c3, marker='o', markerfacecolor=c1, markersize=5, markeredgecolor=c3, label='Rec./All')
 	lRecObs = mlines.Line2D([], [], color=c3, marker='o', markerfacecolor=c2, markersize=5, markeredgecolor=c3, label='Rec./Obs.')
-	ax3.legend(handles=[lAll, lObs, lRec, lObsAll, lRecAll, lRecObs])
+	ax1.legend(handles=[lAll, lObs, lRec, lObsAll, lRecAll, lRecObs], loc='lower right')
 
 	f.subplots_adjust(hspace=0)
 	f.savefig(fname+'_ratio.pdf',format='pdf', bbox_inches = 'tight')
