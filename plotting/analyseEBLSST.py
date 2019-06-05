@@ -73,11 +73,13 @@ if __name__ == "__main__":
 
 	#bins for all the histograms
 	Nbins = 25
-	mbins = np.arange(0,10, 0.2)
+	mbins = np.arange(0,10, 0.1)
 	qbins = np.arange(0,10, 0.2)
-	ebins = np.arange(0, 1, 0.05)
-	lpbins = np.arange(0,10, 0.25)
-	dbins = np.arange(0, 40, 0.5)
+	ebins = np.arange(0, 1.05, 0.05)
+	lpbins = np.arange(-2, 10, 0.5)
+	dbins = np.arange(0, 40, 1)
+	magbins = np.arange(11, 25, 1)
+	rbins = np.arange(0, 100, 0.5)
 
 	#blanks for the histograms
 	#All
@@ -86,18 +88,24 @@ if __name__ == "__main__":
 	ehAll = np.zeros_like(ebins)[1:]
 	lphAll = np.zeros_like(lpbins)[1:]
 	dhAll = np.zeros_like(dbins)[1:]
+	maghAll = np.zeros_like(magbins)[1:]
+	rhAll = np.zeros_like(rbins)[1:]
 	#Observable
 	m1hObs = np.zeros_like(mbins)[1:]
 	qhObs = np.zeros_like(qbins)[1:]
 	ehObs = np.zeros_like(ebins)[1:]
 	lphObs = np.zeros_like(lpbins)[1:]
 	dhObs = np.zeros_like(dbins)[1:]
+	maghObs = np.zeros_like(magbins)[1:]
+	rhObs = np.zeros_like(rbins)[1:]
 	#Recovered
 	m1hRec = np.zeros_like(mbins)[1:]
 	qhRec = np.zeros_like(qbins)[1:]
 	ehRec = np.zeros_like(ebins)[1:]
 	lphRec = np.zeros_like(lpbins)[1:]
 	dhRec = np.zeros_like(dbins)[1:]
+	maghRec = np.zeros_like(magbins)[1:]
+	rhRec = np.zeros_like(rbins)[1:]
 
 	RA = []
 	Dec = []
@@ -141,6 +149,8 @@ if __name__ == "__main__":
 			ehAll0, eb = np.histogram(data["e"], bins=ebins, density=True)
 			lphAll0, lpb = np.histogram(np.ma.log10(data["p"].values).filled(-999), bins=lpbins, density=True)
 			dhAll0, db = np.histogram(data["d"], bins=dbins, density=True)
+			maghAll0, magb = np.histogram(data["appMagMean"], bins=magbins, density=True)
+			rhAll0, rb = np.histogram(data["r2"]/data["r1"], bins=rbins, density=True)
 
 			#account for the binary fraction, as a function of mass
 			dm1 = np.diff(m1b)
@@ -154,6 +164,8 @@ if __name__ == "__main__":
 			ehAll += ehAll0*Nmult
 			lphAll += lphAll0*Nmult
 			dhAll += dhAll0*Nmult
+			maghAll += maghAll0*Nmult
+			rhAll += rhAll0*Nmult
 
 			#Obs
 			obs = data.loc[data['LSM_PERIOD'] != -999]
@@ -164,11 +176,15 @@ if __name__ == "__main__":
 				ehObs0, eb = np.histogram(obs["e"], bins=ebins, density=True)
 				lphObs0, lpb = np.histogram(np.ma.log10(obs["p"].values).filled(-999), bins=lpbins, density=True)
 				dhObs0, db = np.histogram(obs["d"], bins=dbins, density=True)
+				maghObs0, magb = np.histogram(obs["appMagMean"], bins=magbins, density=True)
+				rhObs0, rb = np.histogram(obs["r2"]/obs["r1"], bins=rbins, density=True)
 				m1hObs += m1hObs0*Nmult*ofrac
 				qhObs += qhObs0*Nmult*ofrac
 				ehObs += ehObs0*Nmult*ofrac
 				lphObs += lphObs0*Nmult*ofrac
 				dhObs += dhObs0*Nmult*ofrac
+				maghObs += maghObs0*Nmult*ofrac
+				rhObs += rhObs0*Nmult*ofrac
 
 				#Rec
 				fullP = abs(data['LSM_PERIOD'] - data['p'])/data['LSM_PERIOD']
@@ -182,11 +198,15 @@ if __name__ == "__main__":
 					ehRec0, eb = np.histogram(rec["e"], bins=ebins, density=True)
 					lphRec0, lpb = np.histogram(np.ma.log10(rec["p"].values).filled(-999), bins=lpbins, density=True)
 					dhRec0, db = np.histogram(rec["d"], bins=dbins, density=True)
+					maghRec0, magb = np.histogram(rec["appMagMean"], bins=magbins, density=True)
+					rhRec0, rb = np.histogram(rec["r2"]/rec["r1"], bins=rbins, density=True)
 					m1hRec += m1hRec0*Nmult*rfrac
 					qhRec += qhRec0*Nmult*rfrac
 					ehRec += ehRec0*Nmult*rfrac
 					lphRec += lphRec0*Nmult*rfrac
 					dhRec += dhRec0*Nmult*rfrac
+					maghRec += maghRec0*Nmult*rfrac
+					rhRec += rhRec0*Nmult*rfrac
 
 					#for the mollweide
 					rF = len(rec.index)/len(data.index)
@@ -211,6 +231,8 @@ if __name__ == "__main__":
 	saveHist(np.insert(ehAll,0,0), np.insert(ehObs,0,0), np.insert(ehRec,0,0), eb, 'e', 'EBLSST_ehist')
 	saveHist(np.insert(lphAll,0,0), np.insert(lphObs,0,0), np.insert(lphRec,0,0), lpb, 'log(P [days])', 'EBLSST_lphist')
 	saveHist(np.insert(dhAll,0,0), np.insert(dhObs,0,0), np.insert(dhRec,0,0), db, 'd (kpc)', 'EBLSST_dhist')
+	saveHist(np.insert(maghAll,0,0), np.insert(maghObs,0,0), np.insert(maghRec,0,0), db, 'mag', 'EBLSST_maghist')
+	saveHist(np.insert(rhAll,0,0), np.insert(rhObs,0,0), np.insert(rhRec,0,0), qb, 'r2/r1', 'EBLSST_rhist')
 
 
 	#make the mollweide
