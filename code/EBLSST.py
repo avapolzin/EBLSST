@@ -435,7 +435,7 @@ class EclipsingBinary(object):
 
 	def checkIfObservable(self):
 
-		if (self.appMagMeanAll <= 11. or self.appMagMeanAll >= 24.):
+		if (self.appMagMean['r_'] <= 15.8 or self.appMagMean['r_'] >= 24.5): #15.8 = rband saturation from Science Book page 57, before Section 3.3; 24.5 is the desired detection limit
 			self.appmag_failed = 1
 		
 		ratio = (self.r1 + self.r2)/(2.*self.a)
@@ -1573,7 +1573,7 @@ class LSSTEBworker(object):
 
 
 	def writeOutputLine(self, EB, OpSimi=0, header = False, noRun = False):
-		cols = ['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','Av','[M/H]','appMagMean', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD']
+		cols = ['p', 'm1', 'm2', 'r1', 'r2', 'e', 'i', 'd', 'nobs','Av','[M/H]','appMagMean_r', 'maxDeltaMag', 'mag_failure', 'incl_failure', 'period_failure', 'radius_failure', 'u_LSS_PERIOD', 'g_LSS_PERIOD', 'r_LSS_PERIOD', 'i_LSS_PERIOD', 'z_LSS_PERIOD', 'y_LSS_PERIOD','LSM_PERIOD']
 		if (header):
 			#print(self.useOpSimDates, self.Galaxy, self.OpSim)
 			ng = 0
@@ -1590,7 +1590,7 @@ class LSSTEBworker(object):
 			output = [-1 for x in range(len(cols))]
 
 		else:
-			output = [EB.period, EB.m1, EB.m2, EB.r1, EB.r2, EB.eccentricity, EB.inclination, EB.dist, EB.nobs, EB.AV, EB.M_H, EB.appMagMeanAll, EB.maxDeltaMag, EB.appmag_failed, EB.incl_failed, EB.period_failed, EB.radius_failed]
+			output = [EB.period, EB.m1, EB.m2, EB.r1, EB.r2, EB.eccentricity, EB.inclination, EB.dist, EB.nobs, EB.AV, EB.M_H, EB.appMagMean['r_'], EB.maxDeltaMag, EB.appmag_failed, EB.incl_failed, EB.period_failed, EB.radius_failed]
 
 			#this is for gatspt
 			for filt in self.filters:
