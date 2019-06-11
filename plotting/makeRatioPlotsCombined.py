@@ -8,7 +8,7 @@ matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import matplotlib.lines as mlines
 
-def plotHist(histAll, histObs, histRec, bin_edges, histAllOD, histObsOD, histRecOD, bin_edgesOD, xlim, xtitle, fname):
+def plotHist(histAll, histObs, histRec, bin_edges, histAllOD, histObsOD, histRecOD, bin_edgesOD, xlim, xtitle, fname, legendLoc='lower right'):
 	c1 = '#0294A5'  #turqoise
 	c2 = '#d95f02' #orange from color brewer
 	c3 = '#00353E' #slate
@@ -60,28 +60,42 @@ def plotHist(histAll, histObs, histRec, bin_edges, histAllOD, histObsOD, histRec
 	ax2.set_ylim(0.5e-5, 0.9)
 	ax2.set_xlim(xlim[0],xlim[1])
 
-	#ratio (I don't need these use bits anymore, but will keep just in case.  If I set > 0 then I miss the first bin with the line, presumably because of the step plotting method)
-	use = np.where(histAll > -1)[0]
-	ax3.step(bin_edges[use], histObs[use]/histAll[use], color=c2, label='Observable/All')
-	ax3.plot(bin_edges[use] - binHalf, histObs[use]/histAll[use], 'o',color=c1, markersize=5, markeredgecolor=c2)
 
-	ax3.step(bin_edges[use], histRec[use]/histAll[use], color=c3, label='Recoverable/All')
-	ax3.plot(bin_edges[use] - binHalf, histRec[use]/histAll[use], 'o',color=c1, markersize=5, markeredgecolor=c3)
+	ratio = histObs/histAll
+	check = np.isnan(ratio)
+	ratio[check]=0.
+	ax3.step(bin_edges, ratio, color=c2, label='Observable/All')
+	ax3.plot(bin_edges - binHalf, ratio, 'o',color=c1, markersize=5, markeredgecolor=c2)
 
-	use = np.where(histObs > -1)[0]
-	ax3.step(bin_edges[use], histRec[use]/histObs[use], color=c3, label='Recoverable/Observable')
-	ax3.plot(bin_edges[use] - binHalf, histRec[use]/histObs[use], 'o',color=c2, markersize=5, markeredgecolor=c3)
+	ratio = histRec/histAll
+	check = np.isnan(ratio)
+	ratio[check]=0.	
+	ax3.step(bin_edges, ratio, color=c3, label='Recoverable/All')
+	ax3.plot(bin_edges - binHalf, ratio, 'o',color=c1, markersize=5, markeredgecolor=c3)
 
-	use = np.where(histAllOD > -1)[0]
-	ax3.step(bin_edgesOD[use], histObsOD[use]/histAllOD[use], color=c2, linestyle=':')
-	ax3.plot(bin_edgesOD[use] - binHalfOD, histObsOD[use]/histAllOD[use], 'o',color=c1, markersize=3.5, markeredgecolor=c2)
+	ratio = histRec/histObs
+	check = np.isnan(ratio)
+	ratio[check]=0.
+	ax3.step(bin_edges, ratio, color=c3, label='Recoverable/Observable')
+	ax3.plot(bin_edges - binHalf, ratio, 'o',color=c2, markersize=5, markeredgecolor=c3)
 
-	ax3.step(bin_edgesOD[use], histRecOD[use]/histAllOD[use], color=c3, linestyle=':')
-	ax3.plot(bin_edgesOD[use] - binHalfOD, histRecOD[use]/histAllOD[use], 'o',color=c1, markersize=3.5, markeredgecolor=c3)
+	ratio = histObsOD/histAllOD
+	check = np.isnan(ratio)
+	ratio[check]=0.	
+	ax3.step(bin_edgesOD, ratio, color=c2, linestyle=':')
+	ax3.plot(bin_edgesOD - binHalfOD, ratio, 'o',color=c1, markersize=3.5, markeredgecolor=c2)
 
-	use = np.where(histObsOD > -1)[0]
-	ax3.step(bin_edgesOD[use], histRecOD[use]/histObsOD[use], color=c3, linestyle=':')
-	ax3.plot(bin_edgesOD[use] - binHalfOD, histRecOD[use]/histObsOD[use], 'o',color=c2, markersize=3.5, markeredgecolor=c3)
+	ratio = histRecOD/histAllOD
+	check = np.isnan(ratio)
+	ratio[check]=0.	
+	ax3.step(bin_edgesOD, ratio, color=c3, linestyle=':')
+	ax3.plot(bin_edgesOD - binHalfOD, ratio, 'o',color=c1, markersize=3.5, markeredgecolor=c3)
+
+	ratio = histRecOD/histObsOD
+	check = np.isnan(ratio)
+	ratio[check]=0.
+	ax3.step(bin_edgesOD, ratio, color=c3, linestyle=':')
+	ax3.plot(bin_edgesOD - binHalfOD, ratio, 'o',color=c2, markersize=3.5, markeredgecolor=c3)
 
 
 	ax3.set_ylabel('Ratio', fontsize=16)
@@ -99,7 +113,7 @@ def plotHist(histAll, histObs, histRec, bin_edges, histAllOD, histObsOD, histRec
 	lObsAll = mlines.Line2D([], [], color=c2, marker='o', markerfacecolor=c1, markersize=5, markeredgecolor=c2, label='Obs./All')
 	lRecAll = mlines.Line2D([], [], color=c3, marker='o', markerfacecolor=c1, markersize=5, markeredgecolor=c3, label='Rec./All')
 	lRecObs = mlines.Line2D([], [], color=c3, marker='o', markerfacecolor=c2, markersize=5, markeredgecolor=c3, label='Rec./Obs.')
-	ax1.legend(handles=[lAll, lObs, lRec, lObsAll, lRecAll, lRecObs], loc='lower right')
+	ax1.legend(handles=[lAll, lObs, lRec, lObsAll, lRecAll, lRecObs], loc=legendLoc)
 
 	f.subplots_adjust(hspace=0)
 	f.savefig(fname+'_ratio.pdf',format='pdf', bbox_inches = 'tight')
@@ -108,42 +122,49 @@ def plotHist(histAll, histObs, histRec, bin_edges, histAllOD, histObsOD, histRec
 
 if __name__ == "__main__":
 
+	print("period")
 	data = pd.read_csv('EBLSST_lphist.csv')
 	dataOD = pd.read_csv('obsDist/EBLSST_lphist.csv')
 	plotHist(data['histAll'].values, data['histObs'].values, data['histRec'].values, data['binEdges'].values, \
 			dataOD['histAll'].values, dataOD['histObs'].values, dataOD['histRec'].values, dataOD['binEdges'].values, \
 			[-2, 6], 'log(Period [days])', 'EBLSST_lphist_final')
 
+	print("eccentricity")
 	data = pd.read_csv('EBLSST_ehist.csv')
 	dataOD = pd.read_csv('obsDist/EBLSST_ehist.csv')
 	plotHist(data['histAll'].values, data['histObs'].values, data['histRec'].values, data['binEdges'].values, \
 			dataOD['histAll'].values, dataOD['histObs'].values, dataOD['histRec'].values, dataOD['binEdges'].values, \
 			[0, 1], 'Eccentricity', 'EBLSST_ehist_final')
 
+	print("distance")
 	data = pd.read_csv('EBLSST_dhist.csv')
 	dataOD = pd.read_csv('obsDist/EBLSST_dhist.csv')
 	plotHist(data['histAll'].values, data['histObs'].values, data['histRec'].values, data['binEdges'].values, \
 			dataOD['histAll'].values, dataOD['histObs'].values, dataOD['histRec'].values, dataOD['binEdges'].values, \
 			[0, 20], 'Distance (kpc)', 'EBLSST_dhist_final')
 
+	print("mass1")
 	data = pd.read_csv('EBLSST_m1hist.csv')
 	dataOD = pd.read_csv('obsDist/EBLSST_m1hist.csv')
 	plotHist(data['histAll'].values, data['histObs'].values, data['histRec'].values, data['binEdges'].values, \
 			dataOD['histAll'].values, dataOD['histObs'].values, dataOD['histRec'].values, dataOD['binEdges'].values, \
 			[0, 2], r'm$_1$ (M$_\odot$)', 'EBLSST_m1hist_final')
 
+	print("mass ratio")
 	data = pd.read_csv('EBLSST_qhist.csv')
 	dataOD = pd.read_csv('obsDist/EBLSST_qhist.csv')
 	plotHist(data['histAll'].values, data['histObs'].values, data['histRec'].values, data['binEdges'].values, \
 			dataOD['histAll'].values, dataOD['histObs'].values, dataOD['histRec'].values, dataOD['binEdges'].values, \
 			[0, 3], r'q (m$_2$/m$_1$)', 'EBLSST_qhist_final')
 
+	print("magnitude")
 	data = pd.read_csv('EBLSST_maghist.csv')
 	dataOD = pd.read_csv('obsDist/EBLSST_maghist.csv')
 	plotHist(data['histAll'].values, data['histObs'].values, data['histRec'].values, data['binEdges'].values, \
 			dataOD['histAll'].values, dataOD['histObs'].values, dataOD['histRec'].values, dataOD['binEdges'].values, \
-			[11, 24], 'mag', 'EBLSST_maghist_final')
+			[11, 24], 'mag', 'EBLSST_maghist_final', legendLoc='upper left')
 
+	print("radius ratio")
 	data = pd.read_csv('EBLSST_rhist.csv')
 	dataOD = pd.read_csv('obsDist/EBLSST_rhist.csv')
 	plotHist(data['histAll'].values, data['histObs'].values, data['histRec'].values, data['binEdges'].values, \
