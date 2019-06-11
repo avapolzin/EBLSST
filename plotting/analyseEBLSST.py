@@ -79,7 +79,7 @@ if __name__ == "__main__":
 	lpbins = np.arange(-2, 10, 0.5, dtype='float')
 	dbins = np.arange(0, 40, 1, dtype='float')
 	magbins = np.arange(11, 25, 1, dtype='float')
-	rbins = np.arange(0, 100, 0.5, dtype='float')
+	rbins = np.arange(0, 100, 0.2, dtype='float')
 
 	#blanks for the histograms
 	#All
