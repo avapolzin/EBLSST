@@ -1103,7 +1103,7 @@ class BreivikGalaxy(object):
 class TRILEGAL(object):
 	def __init__(self, *args,**kwargs):
 		self.area = 10.
-		self.maglim = 24
+		self.maglim = 26
 		self.sigma_AV = 0.1 #default
 		self.binaries = False
 		self.filterset = 'lsst' 
