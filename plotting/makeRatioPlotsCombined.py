@@ -48,14 +48,22 @@ def plotHist(histAll, histObs, histRec, bin_edges, histAllOD, histObsOD, histRec
 	ax1.set_ylim(-0.01,1.01)
 	ax1.set_xlim(xlim[0],xlim[1])
 
-	#PDF
+	#PDF --need to divide by the bin size
+	# ax2.step(bin_edges, histAll/np.sum(histAll)/np.diff(bin_edges)[0], color=c1, label='All')
+	# ax2.step(bin_edges, histObs/np.sum(histObs)/np.diff(bin_edges)[0], color=c2, label='Observable')
+	# ax2.step(bin_edges, histRec/np.sum(histRec)/np.diff(bin_edges)[0], color=c3, label='Recoverable')
+	# ax2.step(bin_edgesOD, histAllOD/np.sum(histAllOD)/np.diff(bin_edgesOD)[0], color=c1, linestyle=':')
+	# ax2.step(bin_edgesOD, histObsOD/np.sum(histObsOD)/np.diff(bin_edgesOD)[0], color=c2, linestyle=':')
+	# ax2.step(bin_edgesOD, histRecOD/np.sum(histRecOD)/np.diff(bin_edgesOD)[0], color=c3, linestyle=':')
+	# ax2.set_ylabel('PDF', fontsize=16)
+	#this is the fraction in each bin
 	ax2.step(bin_edges, histAll/np.sum(histAll), color=c1, label='All')
 	ax2.step(bin_edges, histObs/np.sum(histObs), color=c2, label='Observable')
 	ax2.step(bin_edges, histRec/np.sum(histRec), color=c3, label='Recoverable')
 	ax2.step(bin_edgesOD, histAllOD/np.sum(histAllOD), color=c1, linestyle=':')
 	ax2.step(bin_edgesOD, histObsOD/np.sum(histObsOD), color=c2, linestyle=':')
 	ax2.step(bin_edgesOD, histRecOD/np.sum(histRecOD), color=c3, linestyle=':')
-	ax2.set_ylabel('PDF', fontsize=16)
+	ax2.set_ylabel('Frequency', fontsize=16)
 	ax2.set_yscale('log')
 	ax2.set_ylim(0.5e-5, 0.9)
 	ax2.set_xlim(xlim[0],xlim[1])

@@ -141,16 +141,17 @@ if __name__ == "__main__":
 		data = pd.read_csv(d+f, header = 2).dropna()
 		rF = 0.
 		rN = 0.
-		if (len(data.index) >= Nlim):
+		Nall = len(data.index)
+		if (Nall >= Nlim):
 			#create histograms
 			#All
-			m1hAll0, m1b = np.histogram(data["m1"], bins=mbins, density=True)
-			qhAll0, qb = np.histogram(data["m2"]/data["m1"], bins=qbins, density=True)
-			ehAll0, eb = np.histogram(data["e"], bins=ebins, density=True)
-			lphAll0, lpb = np.histogram(np.ma.log10(data["p"].values).filled(-999), bins=lpbins, density=True)
-			dhAll0, db = np.histogram(data["d"], bins=dbins, density=True)
-			maghAll0, magb = np.histogram(data["appMagMean"], bins=magbins, density=True)
-			rhAll0, rb = np.histogram(data["r2"]/data["r1"], bins=rbins, density=True)
+			m1hAll0, m1b = np.histogram(data["m1"], bins=mbins)
+			qhAll0, qb = np.histogram(data["m2"]/data["m1"], bins=qbins)
+			ehAll0, eb = np.histogram(data["e"], bins=ebins)
+			lphAll0, lpb = np.histogram(np.ma.log10(data["p"].values).filled(-999), bins=lpbins)
+			dhAll0, db = np.histogram(data["d"], bins=dbins)
+			maghAll0, magb = np.histogram(data["appMagMean"], bins=magbins)
+			rhAll0, rb = np.histogram(data["r2"]/data["r1"], bins=rbins)
 
 			#account for the binary fraction, as a function of mass
 			dm1 = np.diff(m1b)
@@ -159,63 +160,63 @@ if __name__ == "__main__":
 			Nmult *= fb
 
 						
-			m1hAll += m1hAll0*Nmult
-			qhAll += qhAll0*Nmult
-			ehAll += ehAll0*Nmult
-			lphAll += lphAll0*Nmult
-			dhAll += dhAll0*Nmult
-			maghAll += maghAll0*Nmult
-			rhAll += rhAll0*Nmult
+			m1hAll += m1hAll0/Nall*Nmult
+			qhAll += qhAll0/Nall*Nmult
+			ehAll += ehAll0/Nall*Nmult
+			lphAll += lphAll0/Nall*Nmult
+			dhAll += dhAll0/Nall*Nmult
+			maghAll += maghAll0/Nall*Nmult
+			rhAll += rhAll0/Nall*Nmult
 
 			#Obs
 			obs = data.loc[data['LSM_PERIOD'] != -999]
-			if (len(obs.index) >= Nlim):
-				ofrac = len(obs.index)/len(data.index)
-				m1hObs0, m1b = np.histogram(obs["m1"], bins=mbins, density=True)
-				qhObs0, qb = np.histogram(obs["m2"]/obs["m1"], bins=qbins, density=True)
-				ehObs0, eb = np.histogram(obs["e"], bins=ebins, density=True)
-				lphObs0, lpb = np.histogram(np.ma.log10(obs["p"].values).filled(-999), bins=lpbins, density=True)
-				dhObs0, db = np.histogram(obs["d"], bins=dbins, density=True)
-				maghObs0, magb = np.histogram(obs["appMagMean"], bins=magbins, density=True)
-				rhObs0, rb = np.histogram(obs["r2"]/obs["r1"], bins=rbins, density=True)
-				m1hObs += m1hObs0*Nmult*ofrac
-				qhObs += qhObs0*Nmult*ofrac
-				ehObs += ehObs0*Nmult*ofrac
-				lphObs += lphObs0*Nmult*ofrac
-				dhObs += dhObs0*Nmult*ofrac
-				maghObs += maghObs0*Nmult*ofrac
-				rhObs += rhObs0*Nmult*ofrac
+			Nobs = len(obs.index)
+			if (Nobs >= Nlim):
+				m1hObs0, m1b = np.histogram(obs["m1"], bins=mbins)
+				qhObs0, qb = np.histogram(obs["m2"]/obs["m1"], bins=qbins)
+				ehObs0, eb = np.histogram(obs["e"], bins=ebins)
+				lphObs0, lpb = np.histogram(np.ma.log10(obs["p"].values).filled(-999), bins=lpbins)
+				dhObs0, db = np.histogram(obs["d"], bins=dbins)
+				maghObs0, magb = np.histogram(obs["appMagMean"], bins=magbins)
+				rhObs0, rb = np.histogram(obs["r2"]/obs["r1"], bins=rbins)
+				m1hObs += m1hObs0/Nall*Nmult
+				qhObs += qhObs0/Nall*Nmult
+				ehObs += ehObs0/Nall*Nmult
+				lphObs += lphObs0/Nall*Nmult
+				dhObs += dhObs0/Nall*Nmult
+				maghObs += maghObs0/Nall*Nmult
+				rhObs += rhObs0/Nall*Nmult
 
 				#Rec
 				fullP = abs(data['LSM_PERIOD'] - data['p'])/data['LSM_PERIOD']
 				halfP = abs(0.5*data['LSM_PERIOD'] - data['p'])/(0.5*data['LSM_PERIOD'])
 				twiceP = abs(2.*data['LSM_PERIOD'] - data['p'])/(2.*data['LSM_PERIOD'])
 				rec = data.loc[(data['LSM_PERIOD'] != -999) & ( (fullP < Pcut) | (halfP < Pcut) | (twiceP < Pcut))]
-				if (len(rec.index) >= Nlim):
-					rfrac = len(rec.index)/len(data.index)
-					m1hRec0, m1b = np.histogram(rec["m1"], bins=mbins, density=True)
-					qhRec0, qb = np.histogram(rec["m2"]/rec["m1"], bins=qbins, density=True)
-					ehRec0, eb = np.histogram(rec["e"], bins=ebins, density=True)
-					lphRec0, lpb = np.histogram(np.ma.log10(rec["p"].values).filled(-999), bins=lpbins, density=True)
-					dhRec0, db = np.histogram(rec["d"], bins=dbins, density=True)
-					maghRec0, magb = np.histogram(rec["appMagMean"], bins=magbins, density=True)
-					rhRec0, rb = np.histogram(rec["r2"]/rec["r1"], bins=rbins, density=True)
-					m1hRec += m1hRec0*Nmult*rfrac
-					qhRec += qhRec0*Nmult*rfrac
-					ehRec += ehRec0*Nmult*rfrac
-					lphRec += lphRec0*Nmult*rfrac
-					dhRec += dhRec0*Nmult*rfrac
-					maghRec += maghRec0*Nmult*rfrac
-					rhRec += rhRec0*Nmult*rfrac
+				Nrec = len(rec.index)
+				if (Nrec >= Nlim):
+					m1hRec0, m1b = np.histogram(rec["m1"], bins=mbins)
+					qhRec0, qb = np.histogram(rec["m2"]/rec["m1"], bins=qbins)
+					ehRec0, eb = np.histogram(rec["e"], bins=ebins)
+					lphRec0, lpb = np.histogram(np.ma.log10(rec["p"].values).filled(-999), bins=lpbins)
+					dhRec0, db = np.histogram(rec["d"], bins=dbins)
+					maghRec0, magb = np.histogram(rec["appMagMean"], bins=magbins)
+					rhRec0, rb = np.histogram(rec["r2"]/rec["r1"], bins=rbins)
+					m1hRec += m1hRec0/Nall*Nmult
+					qhRec += qhRec0/Nall*Nmult
+					ehRec += ehRec0/Nall*Nmult
+					lphRec += lphRec0/Nall*Nmult
+					dhRec += dhRec0/Nall*Nmult
+					maghRec += maghRec0/Nall*Nmult
+					rhRec += rhRec0/Nall*Nmult
 
 					#for the mollweide
-					rF = len(rec.index)/len(data.index)
-					rN = len(rec.index)/len(data.index)*Nmult
+					rF = Nrec/Nall
+					rN = Nrec/Nall*Nmult
 					raN = Nmult
-					obN = len(obs.index)/len(data.index)*Nmult
-					fiN = len(data.index)
-					fioN = len(obs.index)
-					firN = len(rec.index)
+					obN = Nobs/Nall*Nmult
+					fiN = Nall
+					fioN = Nobs
+					firN = Nrec
 
 		recFrac.append(rF)
 		recN.append(rN)
