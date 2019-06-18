@@ -1383,7 +1383,7 @@ for fileobsDist_ in sorted(allFiles_obsDist):
 	##########################################################
 
 	datobsDist1 = pd.read_csv(fileobsDist_, sep = ',', header=0, nrows=1)
-	N_tri3 = datibsDist1["NstarsTRILEGAL"][0]
+	N_tri3 = datobsDist1["NstarsTRILEGAL"][0]
 	print("N_tri3 = ", N_tri3)
 
 	m1hAll03, m1b3 = np.histogram(datobDist["m1"], bins=mbins)
